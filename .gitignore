@@ -1,0 +1,25 @@
+node_modules/
+dist/
+*.tgz
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/
+
+# Claude sessions (local only)
+.claude/sessions/
+.claude/settings.local.json

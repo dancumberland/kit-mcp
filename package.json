@@ -1,0 +1,50 @@
+{
+  "name": "@dancumberland/kit-mcp",
+  "version": "0.1.0",
+  "description": "Agent-optimized MCP server for Kit.com email marketing. 13 composite tools covering 100% of the Kit V4 API.",
+  "type": "module",
+  "bin": {
+    "kit-mcp": "./dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:int": "vitest run tests/integration",
+    "lint": "biome check .",
+    "lint:fix": "biome check --fix .",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "kit",
+    "convertkit",
+    "email-marketing",
+    "ai-agent",
+    "model-context-protocol"
+  ],
+  "author": "Dan Cumberland",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dancumberland/kit-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
