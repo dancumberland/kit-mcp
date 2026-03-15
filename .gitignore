@@ -20,6 +20,5 @@ Thumbs.db
 # Test
 coverage/
 
-# Claude sessions (local only)
-.claude/sessions/
+# Claude local settings (not shared)
 .claude/settings.local.json

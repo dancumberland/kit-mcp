@@ -67,6 +67,16 @@ Kit_MCP/
 │   └── integration/          # Requires KIT_API_KEY env var
 ├── docs/
 │   └── PRD.md                # Full product requirements document
+├── .claude/                  # Claude Code configuration
+│   ├── CLAUDE.md             # This file
+│   ├── INDEX.md              # Session index
+│   ├── commands/             # Slash commands
+│   ├── rules/                # Path-scoped rules (auto-activate by file)
+│   └── sessions/             # Session logs
+├── memory/                   # Claude auto-memory (persistent across sessions)
+│   └── MEMORY.md             # Memory index (loaded into system prompt)
+├── ACTIVE_WORK.md            # Current task tracking
+├── PROJECT_STATUS.md         # High-level project status
 ├── package.json
 ├── tsconfig.json
 ├── tsup.config.ts
@@ -135,3 +145,17 @@ Use conventional commits:
 - `test:` test additions/changes
 - `docs:` documentation
 - `chore:` build, CI, dependencies
+
+---
+
+## Key Resources
+
+- **PRD**: `docs/PRD.md` — full product requirements, tool inventory, data contracts, acceptance criteria
+- **Kit V4 API docs**: https://developers.kit.com/v4
+- **MCP SDK**: https://github.com/modelcontextprotocol/typescript-sdk
+- **Competitor (reference)**: https://www.npmjs.com/package/kit-mcp-server
+- **Systems Registry**: `~/Documents/Work/CoreContext/SYSTEMS.md` — index of all infrastructure/services
+
+---
+
+*Shared sections (Session Management, Foundational Rules, Voice, Research Protocol, etc.) live in the global `~/.claude/CLAUDE.md` and apply automatically to all projects.*
