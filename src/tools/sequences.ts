@@ -65,7 +65,7 @@ async function handleList(
 	const query = params.length > 0 ? `?${params.join("&")}` : "";
 
 	const data = await client.get<KitSequencesResponse>(`/sequences${query}`);
-	return formatSequenceList(data.courses, data.pagination);
+	return formatSequenceList(data.sequences, data.pagination);
 }
 
 async function handleAddSubscriber(

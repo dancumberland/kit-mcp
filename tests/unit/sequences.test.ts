@@ -54,7 +54,7 @@ describe("handleManageSequences", () => {
 
 	it("list returns formatted sequence list", async () => {
 		mockFetch.mockResolvedValueOnce(
-			new Response(JSON.stringify({ courses: mockSequences, pagination: mockPagination }), {
+			new Response(JSON.stringify({ sequences: mockSequences, pagination: mockPagination }), {
 				status: 200,
 			}),
 		);
@@ -116,7 +116,7 @@ describe("handleManageSequences", () => {
 
 	it("list with empty results returns no sequences message", async () => {
 		mockFetch.mockResolvedValueOnce(
-			new Response(JSON.stringify({ courses: [], pagination: mockPagination }), { status: 200 }),
+			new Response(JSON.stringify({ sequences: [], pagination: mockPagination }), { status: 200 }),
 		);
 
 		const { client, handleManageSequences } = await importFresh();

@@ -1,6 +1,6 @@
 {
   "name": "@dancumberland/kit-mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Agent-optimized MCP server for Kit.com email marketing. 13 composite tools covering 100% of the Kit V4 API.",
   "type": "module",
   "bin": {
@@ -15,8 +15,8 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --exclude 'tests/integration/**'",
+    "test:watch": "vitest --exclude 'tests/integration/**'",
     "test:int": "vitest run tests/integration",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",

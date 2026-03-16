@@ -4,7 +4,9 @@ Last updated: 2026-03-15
 
 ## In Progress
 
-Nothing — Phase 1-3 complete, all 13 tools built
+Working on: Phase 4 — integration tests, README polish, CI, version bump to 1.0.0
+Key files: tests/integration/, README.md, .github/workflows/, package.json, server.json
+Current step: Building integration tests and README
 
 ## Completed Today
 

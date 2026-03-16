@@ -31,7 +31,7 @@ function failure(error: unknown) {
 export function createServer(): McpServer {
 	const server = new McpServer({
 		name: "kit-mcp",
-		version: "0.1.0",
+		version: "1.0.0",
 	});
 
 	// Lazy-init client — deferred until first tool call so env vars can be set after import

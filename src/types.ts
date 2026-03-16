@@ -153,12 +153,8 @@ export interface KitSequence {
 }
 
 export interface KitSequencesResponse {
-	courses: KitSequence[];
+	sequences: KitSequence[];
 	pagination: KitPagination;
-}
-
-export interface KitSequenceResponse {
-	course: KitSequence;
 }
 
 // --- Custom Fields ---
