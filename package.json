@@ -4,7 +4,7 @@
   "description": "Agent-optimized MCP server for Kit.com email marketing. 13 composite tools covering 100% of the Kit V4 API.",
   "type": "module",
   "bin": {
-    "kit-mcp": "./dist/index.mjs"
+    "kit-mcp": "dist/index.js"
   },
   "files": [
     "dist"
@@ -35,7 +35,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dancumberland/kit-mcp.git"
+    "url": "git+https://github.com/dancumberland/kit-mcp.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.0",
@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
+    "@types/node": "^25.5.0",
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"

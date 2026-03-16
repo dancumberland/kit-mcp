@@ -3,6 +3,7 @@ dist/
 *.tgz
 
 # Environment
+.npmrc
 .env
 .env.local
 .env.*.local
