@@ -1,47 +1,76 @@
 # @dancumberland/kit-mcp
 
-Agent-optimized MCP server for [Kit.com](https://kit.com) (formerly ConvertKit) email marketing. 13 composite tools covering 100% of the Kit V4 API with formatted responses, rate limiting, and typed errors.
+The most complete MCP server for [Kit.com](https://kit.com) (formerly ConvertKit). 13 agent-optimized tools covering 100% of the Kit V4 API — including engagement analytics, bulk operations, and broadcast click tracking that no other Kit MCP offers.
+
+## How This Is Different
+
+Other Kit MCP servers wrap each API endpoint as a separate tool (29+ tools). That approach breaks in practice:
+
+| | **@dancumberland/kit-mcp** | **Other Kit MCPs** |
+|---|---|---|
+| **Tool count** | 13 composite tools (44 actions) | 29+ individual tools |
+| **Engagement analytics** | Per-subscriber open/click rates, batch comparison across 100 subscribers, engagement-based filtering | None |
+| **Broadcast analytics** | Per-broadcast stats, cross-broadcast comparison, per-link click tracking | Basic list/get only |
+| **Bulk operations** | Batch create subscribers, tags, form subscriptions (up to 10k per call) | None |
+| **Response format** | Formatted text summaries (agent-friendly) | Raw JSON (agent must parse) |
+| **Rate limiting** | Sliding window with automatic retry + exponential backoff | None |
+| **Error recovery** | Typed errors with actionable recovery hints | Generic errors |
+| **Cursor compatible** | 13 tools (well under 40-tool limit) | 29+ tools (risks hitting limit) |
+| **Token overhead** | ~3,200 tokens for all tool definitions | ~8,000+ tokens |
+
+### Engagement Analytics (Exclusive)
+
+This is the only Kit MCP that can answer "who are my most engaged subscribers?":
+
+```
+> Find my most engaged 100 subscribers who've been on my list over 6 months
+
+Subscriber Comparison (100 of 100 loaded, sorted by open rate):
+
+  1. Alice <alice@example.com> — Open: 82.3% | Click: 24.1% | Sent: 95 | Last open: 2026-03-15 (ID: 456)
+  2. Bob <bob@example.com> — Open: 71.0% | Click: 18.5% | Sent: 102 | Last open: 2026-03-14 (ID: 789)
+  ...
+```
+
+Other Kit MCPs can list subscribers and get basic profiles, but can't fetch engagement stats, compare across subscribers, or filter by engagement metrics.
 
 ## What This Does
 
-This connects Claude to your Kit.com email marketing account. Once set up, you can ask Claude things like:
+Connects any MCP client (Claude Desktop, Claude Code, Cursor, Windsurf, etc.) to your Kit.com email marketing account. Ask questions naturally:
 
-- "How many subscribers do I have?"
+- "How many subscribers do I have and how's my list growing?"
 - "Show me my broadcast stats from last week"
+- "Find my most engaged subscribers from the past 6 months"
 - "Tag everyone who signed up through my landing page"
 - "Create a draft broadcast for my newsletter"
-- "Find the subscriber dan@example.com and show me their engagement stats"
+- "Which links got the most clicks in my last broadcast?"
 
-No coding required — just set it up and start talking to Claude about your Kit account.
+No coding required — just set it up and start talking.
 
 ## Prerequisites
 
-1. **Node.js 22+** — Download from [nodejs.org](https://nodejs.org). To check if you have it, open Terminal and run `node --version`.
-2. **A Kit.com account** — Free or paid, any plan works.
-3. **Your Kit API key** — Go to [kit.com → Account Settings → Developer](https://app.kit.com/account/developer) and copy your API key. It starts with `kit_`.
+1. **Node.js 22+** — Download from [nodejs.org](https://nodejs.org). Check with `node --version`.
+2. **A Kit.com account** — Free or paid, any plan.
+3. **Your Kit API key** — [kit.com → Account Settings → Developer](https://app.kit.com/account/developer). Starts with `kit_`.
 
 ## Setup: Claude Desktop App (Recommended)
-
-This is the easiest way to get started. Works on Mac and Windows.
 
 ### Step 1: Find your config file
 
 **Mac:**
-Open Terminal and run:
 ```bash
 open ~/Library/Application\ Support/Claude/
 ```
-This opens the folder containing `claude_desktop_config.json`. Open that file in any text editor.
+Open `claude_desktop_config.json` in any text editor.
 
 **Windows:**
-Open File Explorer and go to:
 ```
 %APPDATA%\Claude\claude_desktop_config.json
 ```
 
 ### Step 2: Add the Kit MCP server
 
-If the file is empty or doesn't exist, paste this entire block (replace `your-kit-api-key` with your actual key):
+If the file is empty or doesn't exist, paste this (replace `your-kit-api-key` with your actual key):
 
 ```json
 {
@@ -57,62 +86,31 @@ If the file is empty or doesn't exist, paste this entire block (replace `your-ki
 }
 ```
 
-If the file already has other MCP servers, add the `"kit"` entry inside the existing `"mcpServers"` block. Make sure to add a comma after the previous server entry:
-
-```json
-{
-  "mcpServers": {
-    "some-other-server": {
-      "...": "..."
-    },
-    "kit": {
-      "command": "npx",
-      "args": ["-y", "@dancumberland/kit-mcp@latest"],
-      "env": {
-        "KIT_API_KEY": "your-kit-api-key"
-      }
-    }
-  }
-}
-```
+If you already have other MCP servers, add `"kit"` inside the existing `"mcpServers"` block with a comma after the previous entry.
 
 ### Step 3: Restart Claude Desktop
 
-Fully quit the Claude Desktop app (not just close the window) and reopen it. On Mac, right-click the dock icon and choose Quit, then reopen.
+Fully quit (not just close the window) and reopen.
 
 ### Step 4: Verify it works
 
-Start a new conversation and say:
-
 > Test my Kit connection
 
-Claude should respond with your account name, auth method, and rate limit. If you see an error, double-check your API key.
+Claude should respond with your account name, auth method, and rate limit.
 
 ## Setup: Claude Desktop with Cowork
 
-[Cowork](https://www.anthropic.com/research/cowork) is Claude Desktop's background agent that can run tasks on a schedule. Once you've completed the Claude Desktop setup above, Cowork automatically has access to your Kit tools.
+[Cowork](https://www.anthropic.com/research/cowork) is Claude Desktop's background agent. After completing the setup above, Cowork automatically has access to your Kit tools.
 
-### Example Cowork Tasks
+**Example tasks:**
 
-Open Cowork (click the Cowork icon in Claude Desktop) and try tasks like:
-
-**Daily subscriber report:**
-> Every morning at 8am, check my Kit account stats and give me a summary of subscriber growth, email performance, and any broadcasts sent in the last 24 hours.
-
-**Weekly broadcast review:**
-> Every Monday at 9am, pull my broadcast stats from the past week and summarize open rates, click rates, and unsubscribes across all sent broadcasts.
-
-**New subscriber monitor:**
-> Every evening, list my newest subscribers from today and show me which forms or sequences they came through.
-
-**Tag audit:**
-> Every Friday, list all my tags and tell me which ones have fewer than 10 subscribers (candidates for cleanup).
-
-Cowork uses the same MCP server configuration as Claude Desktop, so no additional setup is needed.
+- "Every morning at 8am, summarize my subscriber growth and email performance from the last 24 hours."
+- "Every Monday at 9am, compare my broadcast stats from the past week — open rates, click rates, and unsubscribes."
+- "Every Friday, list all tags with fewer than 10 subscribers (candidates for cleanup)."
 
 ## Setup: Claude Code (CLI)
 
-Add to your project's `.claude/settings.local.json` or global `~/.claude/settings.json`:
+Add to `.claude/settings.local.json` or `~/.claude/settings.json`:
 
 ```json
 {
@@ -128,14 +126,12 @@ Add to your project's `.claude/settings.local.json` or global `~/.claude/setting
 }
 ```
 
-Restart Claude Code. The 13 Kit tools will be available in your session.
-
 ## Setup: Cursor
 
-1. Open Cursor Settings (Cmd+, on Mac)
-2. Search for "MCP" in settings
+1. Open Settings (Cmd+,)
+2. Search for "MCP"
 3. Click "Add MCP Server"
-4. Add this configuration:
+4. Add:
 
 ```json
 {
@@ -153,9 +149,9 @@ Restart Claude Code. The 13 Kit tools will be available in your session.
 
 | Tool | Actions | What You Can Do |
 |------|---------|-----------------|
-| `manage_subscribers` | 7 | Find, list, create, update, unsubscribe, view stats, filter |
+| `manage_subscribers` | 9 | Find, list, create, update, unsubscribe, view stats, compare engagement across up to 100 subscribers, filter by status/tags, filter by engagement metrics |
 | `manage_tags` | 6 | List, create, update, tag/untag subscribers, list tagged |
-| `manage_broadcasts` | 6 | List, get, create drafts, update, delete, view stats |
+| `manage_broadcasts` | 8 | List, get, create drafts, update, delete, view stats, compare stats across broadcasts, analyze per-link click data |
 | `manage_forms` | 3 | List forms, list subscribers, add subscriber |
 | `manage_sequences` | 3 | List sequences, add subscriber, list subscribers |
 | `manage_custom_fields` | 4 | List, create, update, delete |
@@ -167,28 +163,26 @@ Restart Claude Code. The 13 Kit tools will be available in your session.
 | `test_connection` | — | Verify your API key works |
 | `bulk_operations` | 7 | Batch subscriber/tag/form/field operations (OAuth required) |
 
-## Things You Can Ask Claude
-
-Once set up, just talk to Claude naturally. Here are some examples:
+## Things You Can Ask
 
 | What You Say | What Happens |
 |-------------|--------------|
-| "How's my email list doing?" | Shows account stats, subscriber count, growth trends |
-| "Find dan@example.com" | Looks up subscriber with tags, custom fields, engagement stats |
-| "Show me my recent broadcasts" | Lists broadcasts with status (draft/scheduled/sent) |
-| "How did my last broadcast perform?" | Shows open rate, click rate, unsubscribes |
-| "Create a tag called vip-customers" | Creates the tag in your Kit account |
-| "Tag dan@example.com with vip-customers" | Applies the tag to that subscriber |
-| "List everyone in my Welcome Series sequence" | Shows subscribers enrolled in that sequence |
-| "What forms do I have?" | Lists all your opt-in forms |
-| "Draft a broadcast with subject 'Big News'" | Creates a draft broadcast (doesn't send it) |
-| "Show me my custom fields" | Lists all custom subscriber fields |
+| "How's my email list doing?" | Account stats, subscriber count, growth trends |
+| "Find dan@example.com" | Subscriber profile with tags, custom fields, engagement stats |
+| "Who are my most engaged subscribers?" | Engagement-filtered list ranked by open/click rates |
+| "Show me my recent broadcasts" | Broadcasts with status (draft/scheduled/sent) |
+| "How did my last broadcast perform?" | Open rate, click rate, unsubscribes, per-link click data |
+| "Which links got the most clicks?" | Per-link click analytics for any broadcast |
+| "Compare my broadcast performance" | Side-by-side stats across all broadcasts |
+| "Create a tag called vip-customers" | Creates the tag in Kit |
+| "Tag dan@example.com with vip-customers" | Applies the tag |
+| "Draft a broadcast with subject 'Big News'" | Creates a draft (doesn't send) |
 
 ## Authentication
 
-**API Key** (covers most features): Get yours at [kit.com → Account Settings → Developer](https://app.kit.com/account/developer). Set it as `KIT_API_KEY` in your config.
+**API Key** (covers most features): Get at [kit.com → Developer](https://app.kit.com/account/developer). Set as `KIT_API_KEY`.
 
-**OAuth Token** (optional, for purchases and bulk operations): Set `KIT_OAUTH_TOKEN` alongside your API key if you need `manage_purchases` or `bulk_operations`.
+**OAuth Token** (optional, for purchases and bulk operations): Set `KIT_OAUTH_TOKEN` alongside your API key.
 
 ```json
 {
@@ -199,17 +193,17 @@ Once set up, just talk to Claude naturally. Here are some examples:
 }
 ```
 
-Rate limits are enforced automatically: 120 req/min (API key) or 600 req/min (OAuth).
+Rate limits enforced automatically: 120 req/min (API key) or 600 req/min (OAuth), with retry + backoff on 429s.
 
-## Why 13 Tools Instead of 29+?
+## Architecture: Why 13 Tools Instead of 29+
 
-Most MCP servers create one tool per API endpoint. For Kit's API, that means 29+ tools — which causes problems:
+Most MCP servers create one tool per API endpoint. For Kit's API, that means 29+ tools — which causes real problems:
 
-- **Context bloat** — 8,000+ tokens just for tool definitions
-- **Poor accuracy** — AI tool selection degrades beyond 20 tools
-- **Compatibility issues** — Cursor has a hard limit of 40 tools across all servers
+- **Context bloat** — 8,000+ tokens just for tool definitions, leaving less room for your actual conversation
+- **Poor accuracy** — AI tool selection degrades measurably beyond 20 tools ([research](https://arxiv.org/abs/2305.15334))
+- **Compatibility** — Cursor has a hard limit of 40 tools across all servers; 29 tools from one server leaves almost no room for others
 
-This server uses 13 composite tools with an `action` parameter instead. Same coverage, 60% fewer tokens, better accuracy.
+This server uses 13 composite tools with a discriminated `action` parameter. Same API coverage, 60% fewer tokens, better accuracy. Each tool groups related operations (e.g., all subscriber actions under `manage_subscribers`) so the AI picks the right tool on the first try.
 
 ## Error Handling
 
@@ -220,7 +214,9 @@ Error 401: Invalid API key
 Recovery: Check your KIT_API_KEY. Find your key at kit.com → Account Settings → Developer.
 ```
 
-Rate limit errors (429) automatically retry up to 3 times with backoff. Server errors (5xx) retry once. Validation errors (422) never retry.
+- **429 (rate limit)**: Automatic retry with exponential backoff, up to 3 attempts
+- **5xx (server error)**: Automatic retry once
+- **422 (validation)**: No retry — returns the error immediately with a fix suggestion
 
 ## Troubleshooting
 
@@ -238,7 +234,7 @@ Rate limit errors (429) automatically retry up to 3 times with backoff. Server e
 npm install
 npm run dev          # Watch mode
 npm run build        # Production build
-npm test             # Unit tests (154 tests)
+npm test             # Unit tests (179 tests)
 npm run test:int     # Integration tests (requires KIT_API_KEY)
 npm run lint         # Biome check
 npm run typecheck    # TypeScript check
