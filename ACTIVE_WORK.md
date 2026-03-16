@@ -1,29 +1,28 @@
 # Active Work
 
-Last updated: 2026-03-15
+Last updated: 2026-03-16
 
 ## In Progress
 
-Nothing — v1.0.0 complete, ready to publish
+Working on: Make GitHub repo public + update README to differentiate from competitors
+Key files: README.md, GitHub repo settings
 
 ## Completed Today
 
-- Phase 1: Foundation (client, errors, formatters, test_connection, get_account) — 42 tests
-- Phase 2: 4 composite tools (subscribers, tags, broadcasts, forms) — 51 tests
-- Phase 3: 7 composite tools (sequences, custom-fields, purchases, segments, webhooks, email-templates, bulk) — 47 tests
-- API corrections: subscriber stats endpoint, tag body format, broadcast email_template_id optional, sequences response key fix
-- Phase 4: Integration tests (12 passing), CI pipeline, README polish, version bump to 1.0.0
-- All 13 tools registered, 140 unit tests + 12 integration tests, 60.73 KB build
+- Added `compare_stats` action to manage_subscribers (batch engagement ranking, up to 100 subscribers)
+- Added `formatSubscriberComparison` formatter (ranked by open rate)
+- Rewrote tool descriptions with prescriptive engagement workflow
+- Bumped version to 1.3.1
+- 8 new tests (179 total passing)
 
 ## Context
 
-- 13/13 tools built (at ceiling of 15)
-- Build output: 60.73 KB ESM
-- Zero `any` types, zero lint issues
-- OAuth-gated tools: manage_purchases, bulk_operations
+- v1.3.1 ready to commit and push
+- Pre-existing v1.2.0 changes (broadcast list_stats, get_clicks, engagement_filter) included
+- Real-world testing showed Claude fails to find engagement data without explicit workflow guidance in descriptions
 
 ## Next Up
 
-- npm publish v1.0.0 (requires `npm adduser`)
-- GitHub repo creation at github.com/dancumberland/kit-mcp
-- MCP Registry listing
+- Test engagement ranking workflow in fresh claude.ai chat
+- npm publish v1.3.1
+- Consider dedicated `top_engaged` action if description changes don't solve the workflow problem

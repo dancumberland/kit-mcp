@@ -1,15 +1,23 @@
 /**
- * manage_broadcasts — 6 actions covering broadcast management.
- * Actions: list, get, create, update, delete, stats
+ * manage_broadcasts — 8 actions covering broadcast management and analytics.
+ * Actions: list, get, create, update, delete, stats, list_stats, get_clicks
  */
 
 import { z } from "zod";
 import type { KitClient } from "../client.js";
-import { formatBroadcastDetail, formatBroadcastList, formatBroadcastStats } from "../formatters.js";
+import {
+	formatBroadcastClicks,
+	formatBroadcastDetail,
+	formatBroadcastList,
+	formatBroadcastStats,
+	formatBroadcastsStatsList,
+} from "../formatters.js";
 import type {
+	KitBroadcastClicksResponse,
 	KitBroadcastResponse,
 	KitBroadcastStatsResponse,
 	KitBroadcastsResponse,
+	KitBroadcastsStatsResponse,
 } from "../types.js";
 
 // --- Schema ---
@@ -68,6 +76,17 @@ export const ManageBroadcastsSchema = z.discriminatedUnion("action", [
 		action: z.literal("stats"),
 		id: z.coerce.number().int().positive().describe("Broadcast ID (required)"),
 	}),
+	z.object({
+		action: z.literal("list_stats"),
+		page_size: z.coerce.number().int().min(1).max(100).optional(),
+		cursor: z.string().describe("Pagination cursor").optional(),
+	}),
+	z.object({
+		action: z.literal("get_clicks"),
+		id: z.coerce.number().int().positive().describe("Broadcast ID (required)"),
+		page_size: z.coerce.number().int().min(1).max(100).optional(),
+		cursor: z.string().describe("Pagination cursor").optional(),
+	}),
 ]);
 
 export type ManageBroadcastsArgs = z.infer<typeof ManageBroadcastsSchema>;
@@ -91,6 +110,10 @@ export async function handleManageBroadcasts(
 			return handleDelete(args, client);
 		case "stats":
 			return handleStats(args, client);
+		case "list_stats":
+			return handleListStats(args, client);
+		case "get_clicks":
+			return handleGetClicks(args, client);
 	}
 }
 
@@ -167,4 +190,32 @@ async function handleStats(
 ): Promise<string> {
 	const data = await client.get<KitBroadcastStatsResponse>(`/broadcasts/${args.id}/stats`);
 	return formatBroadcastStats(data.broadcast);
+}
+
+async function handleListStats(
+	args: Extract<ManageBroadcastsArgs, { action: "list_stats" }>,
+	client: KitClient,
+): Promise<string> {
+	const params: string[] = [];
+	if (args.page_size) params.push(`per_page=${args.page_size}`);
+	if (args.cursor) params.push(`after=${encodeURIComponent(args.cursor)}`);
+	const query = params.length > 0 ? `?${params.join("&")}` : "";
+
+	const data = await client.get<KitBroadcastsStatsResponse>(`/broadcasts/stats${query}`);
+	return formatBroadcastsStatsList(data.broadcasts, data.pagination);
+}
+
+async function handleGetClicks(
+	args: Extract<ManageBroadcastsArgs, { action: "get_clicks" }>,
+	client: KitClient,
+): Promise<string> {
+	const params: string[] = [];
+	if (args.page_size) params.push(`per_page=${args.page_size}`);
+	if (args.cursor) params.push(`after=${encodeURIComponent(args.cursor)}`);
+	const query = params.length > 0 ? `?${params.join("&")}` : "";
+
+	const data = await client.get<KitBroadcastClicksResponse>(
+		`/broadcasts/${args.id}/clicks${query}`,
+	);
+	return formatBroadcastClicks(data.broadcast);
 }

@@ -104,6 +104,22 @@ export interface KitSubscribersResponse {
 	pagination: KitPagination;
 }
 
+// --- Filtered Subscribers (POST /subscribers/filter) ---
+
+export interface KitFilteredSubscriber {
+	id: string;
+	first_name: string | null;
+	email_address: string;
+	created_at: string;
+	tag_names: string[];
+	tag_ids: string[];
+}
+
+export interface KitFilteredSubscribersResponse {
+	subscribers: KitFilteredSubscriber[];
+	pagination: KitPagination & { total_count: number };
+}
+
 // --- Tags ---
 
 export interface KitTag {
@@ -278,21 +294,56 @@ export interface KitBroadcastsResponse {
 	pagination: KitPagination;
 }
 
+export interface KitBroadcastStats {
+	recipients: number;
+	open_rate: number;
+	click_rate: number;
+	unsubscribes: number;
+	total_clicks: number;
+	show_total_clicks: boolean;
+	status: string;
+	progress: number;
+	emails_opened: number;
+	unsubscribe_rate: number;
+	open_tracking_disabled: boolean;
+	click_tracking_disabled: boolean;
+}
+
 export interface KitBroadcastStatsResponse {
 	broadcast: {
 		id: number;
 		subject: string;
-		stats: {
-			recipients: number;
-			open_rate: number;
-			click_rate: number;
-			unsubscribes: number;
-			total_clicks: number;
-			show_total_clicks: boolean;
-			status: string;
-			progress: number;
-		};
+		stats: KitBroadcastStats;
 	};
+}
+
+// --- Broadcast Stats (bulk) ---
+
+export interface KitBroadcastStatsSummary {
+	id: number;
+	stats: KitBroadcastStats;
+}
+
+export interface KitBroadcastsStatsResponse {
+	broadcasts: KitBroadcastStatsSummary[];
+	pagination: KitPagination;
+}
+
+// --- Broadcast Clicks ---
+
+export interface KitBroadcastClick {
+	url: string;
+	unique_clicks: number;
+	click_to_delivery_rate: number;
+	click_to_open_rate: number;
+}
+
+export interface KitBroadcastClicksResponse {
+	broadcast: {
+		id: number;
+		clicks: KitBroadcastClick[];
+	};
+	pagination: KitPagination;
 }
 
 // --- Forms ---

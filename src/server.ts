@@ -31,7 +31,7 @@ function failure(error: unknown) {
 export function createServer(): McpServer {
 	const server = new McpServer({
 		name: "kit-mcp",
-		version: "1.0.2",
+		version: "1.3.1",
 	});
 
 	// Lazy-init client — deferred until first tool call so env vars can be set after import
@@ -81,7 +81,7 @@ export function createServer(): McpServer {
 		"manage_subscribers",
 		{
 			description:
-				"Manage Kit subscribers — find by email/ID, list with filters, create (upsert with tags), update, unsubscribe, view stats, or filter by engagement. Actions: find, list, create, update, unsubscribe, stats, filter",
+				"Manage Kit subscribers. WORKFLOW FOR ENGAGEMENT RANKING: To find most engaged subscribers, always follow this 2-step process: (1) use 'engagement_filter' to find candidate subscriber IDs matching criteria (e.g. opens > 5, subscribed before a date), then (2) pass those IDs to 'compare_stats' to get actual open/click rates ranked by engagement. IMPORTANT: 'list' and 'filter' return profiles only — they do NOT include engagement scores, open rates, or click rates. Never use 'list' or 'filter' to find engaged subscribers. Actions: find, list, create, update, unsubscribe, stats, compare_stats, filter, engagement_filter",
 			inputSchema: ManageSubscribersSchema,
 		},
 		async (args) => {
@@ -115,7 +115,7 @@ export function createServer(): McpServer {
 		"manage_broadcasts",
 		{
 			description:
-				"Manage Kit email broadcasts — list with status filter, get details, create drafts or scheduled sends, update, delete, or view performance stats. Actions: list, get, create, update, delete, stats",
+				"Manage Kit email broadcasts — list with status filter, get details, create drafts or scheduled sends, update, delete, view performance stats, compare stats across all broadcasts, or analyze per-link click data. Actions: list, get, create, update, delete, stats, list_stats, get_clicks",
 			inputSchema: ManageBroadcastsSchema,
 		},
 		async (args) => {

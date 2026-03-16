@@ -11,6 +11,7 @@ Quick overview of development sessions with summaries and status.
 | Date | Session | Type | Status | Summary |
 |------|---------|------|--------|---------|
 | 260315 | [project-setup](./sessions/260315.1630-project-setup.md) | infrastructure | ✅ | Initial project scaffolding — PRD, build config, Claude Code setup |
+| 260316 | [compare-stats-descriptions](./sessions/260316.1200-compare-stats-descriptions.md) | feature | ✅ | Batch subscriber engagement ranking + prescriptive tool descriptions |
 
 ---
 

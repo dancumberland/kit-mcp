@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
 	formatAccountOverview,
+	formatBroadcastClicks,
 	formatBroadcastDetail,
 	formatBroadcastList,
 	formatBroadcastStats,
+	formatBroadcastsStatsList,
 	formatConnectionSuccess,
 	formatCustomFieldDetail,
 	formatCustomFieldList,
 	formatEmailTemplateList,
+	formatFilteredSubscriberList,
 	formatFormList,
 	formatPurchaseDetail,
 	formatPurchaseList,
 	formatSegmentList,
 	formatSequenceList,
+	formatSubscriberComparison,
 	formatSubscriberList,
 	formatSubscriberStats,
 	formatSubscriberSummary,
@@ -24,10 +28,14 @@ import {
 import type {
 	KitAccount,
 	KitBroadcast,
+	KitBroadcastClick,
+	KitBroadcastStats,
+	KitBroadcastStatsSummary,
 	KitCreatorProfile,
 	KitCustomField,
 	KitEmailStats,
 	KitEmailTemplate,
+	KitFilteredSubscriber,
 	KitForm,
 	KitGrowthStats,
 	KitPagination,
@@ -253,6 +261,64 @@ describe("formatSubscriberList", () => {
 	});
 });
 
+describe("formatFilteredSubscriberList", () => {
+	const filterPagination = {
+		...basePagination,
+		total_count: 42,
+	};
+
+	it("returns no match message for empty list", () => {
+		expect(formatFilteredSubscriberList([], { ...filterPagination, total_count: 0 })).toBe(
+			"No subscribers matched the engagement filter.",
+		);
+	});
+
+	it("shows total count and subscriber details with tags", () => {
+		const subs: KitFilteredSubscriber[] = [
+			{
+				id: "100",
+				first_name: "Alice",
+				email_address: "alice@example.com",
+				created_at: "2024-06-01T00:00:00Z",
+				tag_names: ["newsletter", "vip"],
+				tag_ids: ["1", "5"],
+			},
+			{
+				id: "200",
+				first_name: null,
+				email_address: "bob@example.com",
+				created_at: "2024-03-15T00:00:00Z",
+				tag_names: [],
+				tag_ids: [],
+			},
+		];
+
+		const result = formatFilteredSubscriberList(subs, filterPagination);
+		expect(result).toContain("42 total");
+		expect(result).toContain("Alice <alice@example.com> [newsletter, vip]");
+		expect(result).toContain("(no name) <bob@example.com>");
+		expect(result).not.toContain("[]"); // no empty tag brackets
+	});
+
+	it("shows pagination cursor when has_next_page", () => {
+		const subs: KitFilteredSubscriber[] = [
+			{
+				id: "1",
+				first_name: "Test",
+				email_address: "test@example.com",
+				created_at: "2024-01-01T00:00:00Z",
+				tag_names: [],
+				tag_ids: [],
+			},
+		];
+		const result = formatFilteredSubscriberList(subs, {
+			...nextPagePagination,
+			total_count: 100,
+		});
+		expect(result).toContain('cursor "cursor_abc"');
+	});
+});
+
 describe("formatTagList", () => {
 	it("returns no tags message for empty list", () => {
 		expect(formatTagList([], basePagination)).toBe("No tags found.");
@@ -330,44 +396,148 @@ describe("formatBroadcastDetail", () => {
 });
 
 describe("formatBroadcastStats", () => {
-	it("shows performance metrics", () => {
+	const fullStats: KitBroadcastStats = {
+		recipients: 11234,
+		open_rate: 43.5,
+		click_rate: 11.0,
+		unsubscribes: 23,
+		total_clicks: 1234,
+		show_total_clicks: true,
+		status: "completed",
+		progress: 100,
+		emails_opened: 4886,
+		unsubscribe_rate: 0.2,
+		open_tracking_disabled: false,
+		click_tracking_disabled: false,
+	};
+
+	it("shows performance metrics including opened count and unsubscribe rate", () => {
 		const result = formatBroadcastStats({
 			id: 42,
 			subject: "March Newsletter",
-			stats: {
-				recipients: 11234,
-				open_rate: 43.5,
-				click_rate: 11.0,
-				unsubscribes: 23,
-				total_clicks: 1234,
-				show_total_clicks: true,
-				status: "completed",
-				progress: 100,
-			},
+			stats: fullStats,
 		});
 		expect(result).toContain("March Newsletter");
 		expect(result).toContain("11,234");
 		expect(result).toContain("43.5%");
+		expect(result).toContain("4,886 opened");
 		expect(result).toContain("11.0%");
+		expect(result).toContain("0.2%");
 		expect(result).toContain("1,234");
+		expect(result).not.toContain("tracking was disabled");
 	});
 
 	it("hides total clicks when show_total_clicks is false", () => {
 		const result = formatBroadcastStats({
 			id: 1,
 			subject: "Test",
-			stats: {
-				recipients: 100,
-				open_rate: 50.0,
-				click_rate: 10.0,
-				unsubscribes: 1,
-				total_clicks: 50,
-				show_total_clicks: false,
-				status: "completed",
-				progress: 100,
-			},
+			stats: { ...fullStats, show_total_clicks: false },
 		});
 		expect(result).not.toContain("Total clicks");
+	});
+
+	it("shows tracking disabled notes when applicable", () => {
+		const result = formatBroadcastStats({
+			id: 1,
+			subject: "Test",
+			stats: { ...fullStats, open_tracking_disabled: true, click_tracking_disabled: true },
+		});
+		expect(result).toContain("Open tracking was disabled");
+		expect(result).toContain("Click tracking was disabled");
+	});
+});
+
+describe("formatBroadcastsStatsList", () => {
+	const mockStats: KitBroadcastStats = {
+		recipients: 5000,
+		open_rate: 40.0,
+		click_rate: 9.5,
+		unsubscribes: 15,
+		total_clicks: 475,
+		show_total_clicks: true,
+		status: "completed",
+		progress: 100,
+		emails_opened: 2000,
+		unsubscribe_rate: 0.3,
+		open_tracking_disabled: false,
+		click_tracking_disabled: false,
+	};
+
+	it("returns no stats message for empty list", () => {
+		expect(formatBroadcastsStatsList([], basePagination)).toBe("No broadcast stats found.");
+	});
+
+	it("shows stats summary per broadcast with tip", () => {
+		const broadcasts: KitBroadcastStatsSummary[] = [
+			{ id: 42, stats: mockStats },
+			{ id: 43, stats: { ...mockStats, recipients: 8000, open_rate: 51.2 } },
+		];
+		const result = formatBroadcastsStatsList(broadcasts, basePagination);
+		expect(result).toContain("Broadcast Stats (2 shown):");
+		expect(result).toContain("ID: 42");
+		expect(result).toContain("5,000 recipients");
+		expect(result).toContain("Open: 40.0%");
+		expect(result).toContain("Click: 9.5%");
+		expect(result).toContain("ID: 43");
+		expect(result).toContain("51.2%");
+		expect(result).toContain("Tip:");
+	});
+
+	it("shows pagination cursor when has_next_page", () => {
+		const broadcasts: KitBroadcastStatsSummary[] = [{ id: 1, stats: mockStats }];
+		const result = formatBroadcastsStatsList(broadcasts, nextPagePagination);
+		expect(result).toContain('cursor "cursor_abc"');
+	});
+});
+
+describe("formatBroadcastClicks", () => {
+	it("returns no data message for empty clicks", () => {
+		const result = formatBroadcastClicks({ id: 42, clicks: [] });
+		expect(result).toContain("No click data available");
+	});
+
+	it("sorts links by unique_clicks descending and converts rates", () => {
+		const clicks: KitBroadcastClick[] = [
+			{
+				url: "https://example.com/low",
+				unique_clicks: 10,
+				click_to_delivery_rate: 0.001,
+				click_to_open_rate: 0.002,
+			},
+			{
+				url: "https://example.com/high",
+				unique_clicks: 500,
+				click_to_delivery_rate: 0.05,
+				click_to_open_rate: 0.1,
+			},
+		];
+		const result = formatBroadcastClicks({ id: 42, clicks });
+		expect(result).toContain("Click Analytics (2 links):");
+		expect(result).toContain("500 clicks");
+		expect(result).toContain("https://example.com/high");
+		// Verify sorting: high before low
+		const highIdx = result.indexOf("https://example.com/high");
+		const lowIdx = result.indexOf("https://example.com/low");
+		expect(highIdx).toBeLessThan(lowIdx);
+		// Rate conversion: 0.05 → 5.0%, 0.1 → 10.0%
+		expect(result).toContain("5.0%");
+		expect(result).toContain("10.0%");
+	});
+
+	it("handles single link", () => {
+		const clicks: KitBroadcastClick[] = [
+			{
+				url: "https://example.com/only",
+				unique_clicks: 42,
+				click_to_delivery_rate: 0.006,
+				click_to_open_rate: 0.012,
+			},
+		];
+		const result = formatBroadcastClicks({ id: 1, clicks });
+		expect(result).toContain("1 links");
+		expect(result).toContain("42 clicks");
+		expect(result).toContain("0.6%");
+		expect(result).toContain("1.2%");
 	});
 });
 
@@ -615,5 +785,103 @@ describe("formatEmailTemplateList", () => {
 		expect(result).toContain("Email Templates (2 shown):");
 		expect(result).toContain("Default (ID: 1)");
 		expect(result).toContain("Newsletter (ID: 2)");
+	});
+});
+
+describe("formatSubscriberComparison", () => {
+	const makeSub = (id: number, name: string, email: string): KitSubscriber => ({
+		id,
+		first_name: name,
+		email_address: email,
+		state: "active",
+		created_at: "2024-01-01T00:00:00Z",
+		fields: {},
+	});
+
+	const makeStats = (
+		openRate: number,
+		clickRate: number,
+		sent: number,
+		lastOpened: string | null,
+	): KitSubscriberStats => ({
+		sent,
+		opened: Math.round(sent * (openRate / 100)),
+		clicked: Math.round(sent * (clickRate / 100)),
+		bounced: 0,
+		open_rate: openRate,
+		click_rate: clickRate,
+		last_sent: null,
+		last_opened: lastOpened,
+		last_clicked: null,
+		sends_since_last_open: 0,
+		sends_since_last_click: 0,
+	});
+
+	it("sorts by open rate descending", () => {
+		const results = [
+			{
+				subscriber: makeSub(1, "Low", "low@example.com"),
+				stats: makeStats(20.0, 5.0, 50, "2026-03-01T00:00:00Z"),
+			},
+			{
+				subscriber: makeSub(2, "High", "high@example.com"),
+				stats: makeStats(80.0, 20.0, 100, "2026-03-10T00:00:00Z"),
+			},
+			{
+				subscriber: makeSub(3, "Mid", "mid@example.com"),
+				stats: makeStats(50.0, 10.0, 75, "2026-03-05T00:00:00Z"),
+			},
+		];
+
+		const result = formatSubscriberComparison(results, [], 6);
+		const highIdx = result.indexOf("High");
+		const midIdx = result.indexOf("Mid");
+		const lowIdx = result.indexOf("Low");
+		expect(highIdx).toBeLessThan(midIdx);
+		expect(midIdx).toBeLessThan(lowIdx);
+		expect(result).toContain("1. High");
+		expect(result).toContain("2. Mid");
+		expect(result).toContain("3. Low");
+	});
+
+	it("shows failure notes for skipped IDs", () => {
+		const results = [
+			{
+				subscriber: makeSub(1, "Alice", "alice@example.com"),
+				stats: makeStats(45.0, 12.0, 80, "2026-03-10T00:00:00Z"),
+			},
+		];
+		const failures = [
+			{ id: 999, error: "Not found" },
+			{ id: 1001, error: "Timeout" },
+		];
+
+		const result = formatSubscriberComparison(results, failures, 6);
+		expect(result).toContain("1 of 3 loaded");
+		expect(result).toContain("Not found (skipped): IDs 999, 1001");
+	});
+
+	it("handles empty results (all failed)", () => {
+		const failures = [
+			{ id: 100, error: "Not found" },
+			{ id: 200, error: "Not found" },
+		];
+
+		const result = formatSubscriberComparison([], failures, 4);
+		expect(result).toContain("No subscriber stats could be loaded");
+		expect(result).toContain("100");
+		expect(result).toContain("200");
+	});
+
+	it("shows API call count", () => {
+		const results = [
+			{
+				subscriber: makeSub(1, "Test", "test@example.com"),
+				stats: makeStats(50.0, 10.0, 100, null),
+			},
+		];
+
+		const result = formatSubscriberComparison(results, [], 2);
+		expect(result).toContain("API calls: 2 requests used.");
 	});
 });

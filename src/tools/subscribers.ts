@@ -1,19 +1,23 @@
 /**
- * manage_subscribers — 7 actions covering subscriber management.
- * Actions: find, list, create, update, unsubscribe, stats, filter
+ * manage_subscribers — 9 actions covering subscriber management.
+ * Actions: find, list, create, update, unsubscribe, stats, compare_stats, filter, engagement_filter
  */
 
 import { z } from "zod";
 import type { KitClient } from "../client.js";
 import { KitValidationError } from "../errors.js";
 import {
+	formatFilteredSubscriberList,
+	formatSubscriberComparison,
 	formatSubscriberList,
 	formatSubscriberStats,
 	formatSubscriberSummary,
 } from "../formatters.js";
 import type {
+	KitFilteredSubscribersResponse,
 	KitSubscriber,
 	KitSubscriberResponse,
+	KitSubscriberStats,
 	KitSubscriberStatsResponse,
 	KitSubscribersResponse,
 	KitTag,
@@ -70,6 +74,16 @@ export const ManageSubscribersSchema = z.discriminatedUnion("action", [
 		id: z.coerce.number().int().positive().describe("Subscriber ID (required)"),
 	}),
 	z.object({
+		action: z.literal("compare_stats"),
+		ids: z
+			.array(z.coerce.number().int().positive())
+			.min(2)
+			.max(100)
+			.describe(
+				"Subscriber IDs to compare (2-100). Step 1: use engagement_filter to find candidate IDs. Step 2: pass those IDs here to get ranked engagement stats. Returns subscribers sorted by open rate with full metrics.",
+			),
+	}),
+	z.object({
 		action: z.literal("filter"),
 		status: z
 			.enum(["active", "inactive", "bounced", "complained", "cancelled"])
@@ -81,6 +95,37 @@ export const ManageSubscribersSchema = z.discriminatedUnion("action", [
 		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().optional(),
 		sort_order: z.enum(["asc", "desc"]).optional(),
+	}),
+	z.object({
+		action: z.literal("engagement_filter"),
+		filters: z
+			.array(
+				z.object({
+					type: z
+						.enum(["opens", "clicks", "sent", "delivered", "subscribed"])
+						.describe("Engagement event type"),
+					count_greater_than: z.coerce
+						.number()
+						.int()
+						.min(0)
+						.describe("Minimum event count (exclusive)")
+						.optional(),
+					count_less_than: z.coerce
+						.number()
+						.int()
+						.min(0)
+						.describe("Maximum event count (exclusive)")
+						.optional(),
+					after: z.string().describe("Activity after this date (YYYY-MM-DD)").optional(),
+					before: z.string().describe("Activity before this date (YYYY-MM-DD)").optional(),
+				}),
+			)
+			.min(1)
+			.describe(
+				"Engagement filter conditions — ALL must match (AND logic). Example: find subscribers who opened more than 5 emails and subscribed before 2025-09-01.",
+			),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
+		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 ]);
 
@@ -105,8 +150,12 @@ export async function handleManageSubscribers(
 			return handleUnsubscribe(args, client);
 		case "stats":
 			return handleStats(args, client);
+		case "compare_stats":
+			return handleCompareStats(args, client);
 		case "filter":
 			return handleFilter(args, client);
+		case "engagement_filter":
+			return handleEngagementFilter(args, client);
 	}
 }
 
@@ -238,6 +287,48 @@ async function handleStats(
 	return formatSubscriberStats(subData.subscriber, statsData.subscriber.stats);
 }
 
+async function handleCompareStats(
+	args: Extract<ManageSubscribersArgs, { action: "compare_stats" }>,
+	client: KitClient,
+): Promise<string> {
+	const BATCH_SIZE = 5;
+	const results: { subscriber: KitSubscriber; stats: KitSubscriberStats }[] = [];
+	const failures: { id: number; error: string }[] = [];
+	let apiCalls = 0;
+
+	// Process IDs in batches of 5 to avoid rate limiter race conditions
+	for (let i = 0; i < args.ids.length; i += BATCH_SIZE) {
+		const batch = args.ids.slice(i, i + BATCH_SIZE);
+
+		const settled = await Promise.allSettled(
+			batch.map(async (id) => {
+				const [subData, statsData] = await Promise.all([
+					client.get<KitSubscriberResponse>(`/subscribers/${id}`),
+					client.get<KitSubscriberStatsResponse>(`/subscribers/${id}/stats`),
+				]);
+				return {
+					subscriber: subData.subscriber,
+					stats: statsData.subscriber.stats,
+				};
+			}),
+		);
+
+		for (const [j, result] of settled.entries()) {
+			const id = batch[j] as number;
+			apiCalls += 2; // 2 API calls per subscriber regardless of success/failure
+
+			if (result.status === "fulfilled") {
+				results.push(result.value);
+			} else {
+				const message = result.reason instanceof Error ? result.reason.message : "Unknown error";
+				failures.push({ id, error: message });
+			}
+		}
+	}
+
+	return formatSubscriberComparison(results, failures, apiCalls);
+}
+
 async function handleFilter(
 	args: Extract<ManageSubscribersArgs, { action: "filter" }>,
 	client: KitClient,
@@ -257,6 +348,27 @@ async function handleFilter(
 	const query = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
 	const data = await client.get<KitSubscribersResponse>(`/subscribers${query}`);
 	return formatSubscriberList(data.subscribers, data.pagination);
+}
+
+async function handleEngagementFilter(
+	args: Extract<ManageSubscribersArgs, { action: "engagement_filter" }>,
+	client: KitClient,
+): Promise<string> {
+	const body: Record<string, unknown> = {
+		all: args.filters.map((f) => {
+			const condition: Record<string, unknown> = { type: f.type };
+			if (f.count_greater_than !== undefined) condition.count_greater_than = f.count_greater_than;
+			if (f.count_less_than !== undefined) condition.count_less_than = f.count_less_than;
+			if (f.after) condition.after = f.after;
+			if (f.before) condition.before = f.before;
+			return condition;
+		}),
+	};
+	if (args.page_size) body.per_page = args.page_size;
+	if (args.cursor) body.after = args.cursor;
+
+	const data = await client.post<KitFilteredSubscribersResponse>("/subscribers/filter", body);
+	return formatFilteredSubscriberList(data.subscribers, data.pagination);
 }
 
 // --- Helpers ---

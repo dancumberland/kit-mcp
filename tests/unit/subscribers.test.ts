@@ -266,6 +266,306 @@ describe("handleManageSubscribers", () => {
 		expect(result).toContain("Last opened: 2026-03-10");
 	});
 
+	it("engagement_filter posts filter conditions and returns results", async () => {
+		const filteredSubscribers = [
+			{
+				id: "100",
+				first_name: "Alice",
+				email_address: "alice@example.com",
+				created_at: "2024-06-01T00:00:00Z",
+				tag_names: ["newsletter", "vip"],
+				tag_ids: ["1", "5"],
+			},
+			{
+				id: "200",
+				first_name: null,
+				email_address: "bob@example.com",
+				created_at: "2024-03-15T00:00:00Z",
+				tag_names: [],
+				tag_ids: [],
+			},
+		];
+
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: filteredSubscribers,
+					pagination: { ...mockPagination, has_next_page: false, total_count: 2 },
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{
+				action: "engagement_filter",
+				filters: [
+					{ type: "subscribed", before: "2025-09-01" },
+					{ type: "opens", count_greater_than: 5 },
+				],
+			},
+			client,
+		);
+
+		expect(result).toContain("Engagement filter results:");
+		expect(result).toContain("2 total");
+		expect(result).toContain("Alice");
+		expect(result).toContain("alice@example.com");
+		expect(result).toContain("[newsletter, vip]");
+		expect(result).toContain("bob@example.com");
+
+		// Verify POST body
+		const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(url).toContain("/subscribers/filter");
+		expect(options.method).toBe("POST");
+		const body = JSON.parse(options.body as string);
+		expect(body.all).toHaveLength(2);
+		expect(body.all[0]).toEqual({ type: "subscribed", before: "2025-09-01" });
+		expect(body.all[1]).toEqual({ type: "opens", count_greater_than: 5 });
+	});
+
+	it("engagement_filter with no results returns empty message", async () => {
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: [],
+					pagination: { ...mockPagination, has_next_page: false, total_count: 0 },
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{
+				action: "engagement_filter",
+				filters: [{ type: "clicks", count_greater_than: 1000 }],
+			},
+			client,
+		);
+
+		expect(result).toContain("No subscribers matched");
+	});
+
+	it("engagement_filter passes pagination params", async () => {
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: [],
+					pagination: { ...mockPagination, has_next_page: false, total_count: 0 },
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const { client, handleManageSubscribers } = await importFresh();
+		await handleManageSubscribers(
+			{
+				action: "engagement_filter",
+				filters: [{ type: "opens", count_greater_than: 1 }],
+				page_size: 100,
+				cursor: "abc123",
+			},
+			client,
+		);
+
+		const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+		const body = JSON.parse(options.body as string);
+		expect(body.per_page).toBe(100);
+		expect(body.after).toBe("abc123");
+	});
+
+	it("compare_stats returns ranked comparison sorted by open rate", async () => {
+		const sub1 = {
+			...mockSubscriber,
+			id: 100,
+			first_name: "Alice",
+			email_address: "alice@example.com",
+		};
+		const sub2 = {
+			...mockSubscriber,
+			id: 200,
+			first_name: "Bob",
+			email_address: "bob@example.com",
+		};
+
+		const stats1 = {
+			subscriber: {
+				id: 100,
+				stats: {
+					sent: 80,
+					opened: 32,
+					clicked: 8,
+					bounced: 1,
+					open_rate: 40.0,
+					click_rate: 10.0,
+					last_sent: "2026-03-10T00:00:00Z",
+					last_opened: "2026-03-09T00:00:00Z",
+					last_clicked: "2026-03-07T00:00:00Z",
+					sends_since_last_open: 1,
+					sends_since_last_click: 3,
+				},
+			},
+		};
+
+		const stats2 = {
+			subscriber: {
+				id: 200,
+				stats: {
+					sent: 100,
+					opened: 55,
+					clicked: 15,
+					bounced: 0,
+					open_rate: 55.0,
+					click_rate: 15.0,
+					last_sent: "2026-03-12T00:00:00Z",
+					last_opened: "2026-03-12T00:00:00Z",
+					last_clicked: "2026-03-11T00:00:00Z",
+					sends_since_last_open: 0,
+					sends_since_last_click: 1,
+				},
+			},
+		};
+
+		// Sub 100: subscriber + stats
+		mockFetch
+			.mockResolvedValueOnce(new Response(JSON.stringify({ subscriber: sub1 }), { status: 200 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify(stats1), { status: 200 }))
+			// Sub 200: subscriber + stats
+			.mockResolvedValueOnce(new Response(JSON.stringify({ subscriber: sub2 }), { status: 200 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify(stats2), { status: 200 }));
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{ action: "compare_stats", ids: [100, 200] },
+			client,
+		);
+
+		// Bob (55%) should rank above Alice (40%)
+		expect(result).toContain("Subscriber Comparison");
+		expect(result).toContain("2 of 2 loaded");
+		const bobIdx = result.indexOf("Bob");
+		const aliceIdx = result.indexOf("Alice");
+		expect(bobIdx).toBeLessThan(aliceIdx);
+		expect(result).toContain("55.0%");
+		expect(result).toContain("40.0%");
+		expect(result).toContain("API calls: 4");
+	});
+
+	it("compare_stats handles partial failures gracefully", async () => {
+		const sub1 = {
+			...mockSubscriber,
+			id: 100,
+			first_name: "Alice",
+			email_address: "alice@example.com",
+		};
+
+		const stats1 = {
+			subscriber: {
+				id: 100,
+				stats: {
+					sent: 80,
+					opened: 32,
+					clicked: 8,
+					bounced: 1,
+					open_rate: 40.0,
+					click_rate: 10.0,
+					last_sent: "2026-03-10T00:00:00Z",
+					last_opened: "2026-03-09T00:00:00Z",
+					last_clicked: null,
+					sends_since_last_open: 1,
+					sends_since_last_click: 0,
+				},
+			},
+		};
+
+		// Sub 100 succeeds
+		mockFetch
+			.mockResolvedValueOnce(new Response(JSON.stringify({ subscriber: sub1 }), { status: 200 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify(stats1), { status: 200 }))
+			// Sub 999 fails (404)
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }));
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{ action: "compare_stats", ids: [100, 999] },
+			client,
+		);
+
+		expect(result).toContain("1 of 2 loaded");
+		expect(result).toContain("Alice");
+		expect(result).toContain("Not found (skipped): IDs 999");
+		expect(result).toContain("API calls: 4");
+	});
+
+	it("compare_stats makes correct number of API calls (2 per subscriber)", async () => {
+		const subs = [101, 102, 103, 104, 105, 106];
+		for (const id of subs) {
+			mockFetch
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							subscriber: { ...mockSubscriber, id, email_address: `s${id}@example.com` },
+						}),
+						{ status: 200 },
+					),
+				)
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							subscriber: {
+								id,
+								stats: {
+									sent: 50,
+									opened: 25,
+									clicked: 5,
+									bounced: 0,
+									open_rate: 50.0,
+									click_rate: 10.0,
+									last_sent: null,
+									last_opened: null,
+									last_clicked: null,
+									sends_since_last_open: 0,
+									sends_since_last_click: 0,
+								},
+							},
+						}),
+						{ status: 200 },
+					),
+				);
+		}
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers({ action: "compare_stats", ids: subs }, client);
+
+		// 6 subscribers × 2 API calls each = 12
+		expect(result).toContain("API calls: 12");
+		expect(result).toContain("6 of 6 loaded");
+		expect(mockFetch).toHaveBeenCalledTimes(12);
+	});
+
+	it("compare_stats returns error message when all IDs fail", async () => {
+		// Both IDs fail
+		mockFetch
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }));
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{ action: "compare_stats", ids: [888, 999] },
+			client,
+		);
+
+		expect(result).toContain("No subscriber stats could be loaded");
+		expect(result).toContain("888");
+		expect(result).toContain("999");
+		expect(result).toContain("API calls: 4");
+	});
+
 	it("filter by status returns filtered list", async () => {
 		mockFetch.mockResolvedValueOnce(
 			new Response(

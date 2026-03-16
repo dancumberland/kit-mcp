@@ -6,10 +6,14 @@
 import type {
 	KitAccount,
 	KitBroadcast,
+	KitBroadcastClick,
+	KitBroadcastStats,
+	KitBroadcastStatsSummary,
 	KitCreatorProfile,
 	KitCustomField,
 	KitEmailStats,
 	KitEmailTemplate,
+	KitFilteredSubscriber,
 	KitForm,
 	KitGrowthStats,
 	KitPagination,
@@ -132,6 +136,31 @@ export function formatSubscriberList(
 	return lines.join("\n");
 }
 
+export function formatFilteredSubscriberList(
+	subscribers: KitFilteredSubscriber[],
+	pagination: KitPagination & { total_count: number },
+): string {
+	if (subscribers.length === 0) {
+		return "No subscribers matched the engagement filter.";
+	}
+
+	const lines: string[] = [
+		`Engagement filter results: ${subscribers.length} shown of ${fmt(pagination.total_count)} total`,
+	];
+
+	for (const sub of subscribers) {
+		const name = sub.first_name ?? "(no name)";
+		const tags = sub.tag_names.length > 0 ? ` [${sub.tag_names.join(", ")}]` : "";
+		lines.push(`  ${name} <${sub.email_address}>${tags} (ID: ${sub.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
 // --- Tags ---
 
 export function formatTagList(tags: KitTag[], pagination: KitPagination): string {
@@ -204,16 +233,7 @@ export function formatBroadcastDetail(broadcast: KitBroadcast): string {
 export function formatBroadcastStats(broadcast: {
 	id: number;
 	subject: string;
-	stats: {
-		recipients: number;
-		open_rate: number;
-		click_rate: number;
-		unsubscribes: number;
-		total_clicks: number;
-		show_total_clicks: boolean;
-		status: string;
-		progress: number;
-	};
+	stats: KitBroadcastStats;
 }): string {
 	const s = broadcast.stats;
 	const lines: string[] = [
@@ -221,13 +241,68 @@ export function formatBroadcastStats(broadcast: {
 		`Status: ${s.status} | Recipients: ${fmt(s.recipients)}`,
 		"",
 		"Performance:",
-		`  Open rate: ${s.open_rate.toFixed(1)}%`,
+		`  Open rate: ${s.open_rate.toFixed(1)}% (${fmt(s.emails_opened)} opened)`,
 		`  Click rate: ${s.click_rate.toFixed(1)}%`,
-		`  Unsubscribes: ${fmt(s.unsubscribes)}`,
+		`  Unsubscribes: ${fmt(s.unsubscribes)} (${s.unsubscribe_rate.toFixed(1)}%)`,
 	];
 
 	if (s.show_total_clicks) {
 		lines.push(`  Total clicks: ${fmt(s.total_clicks)}`);
+	}
+
+	if (s.open_tracking_disabled) {
+		lines.push("  Note: Open tracking was disabled for this broadcast");
+	}
+	if (s.click_tracking_disabled) {
+		lines.push("  Note: Click tracking was disabled for this broadcast");
+	}
+
+	return lines.join("\n");
+}
+
+export function formatBroadcastsStatsList(
+	broadcasts: KitBroadcastStatsSummary[],
+	pagination: KitPagination,
+): string {
+	if (broadcasts.length === 0) {
+		return "No broadcast stats found.";
+	}
+
+	const lines: string[] = [`Broadcast Stats (${broadcasts.length} shown):`];
+
+	for (const bc of broadcasts) {
+		const s = bc.stats;
+		lines.push(
+			`  ID: ${bc.id} | ${s.status} | ${fmt(s.recipients)} recipients | Open: ${s.open_rate.toFixed(1)}% | Click: ${s.click_rate.toFixed(1)}% | Unsubs: ${fmt(s.unsubscribes)}`,
+		);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	lines.push("\nTip: use 'list' action to get broadcast subjects and details.");
+
+	return lines.join("\n");
+}
+
+export function formatBroadcastClicks(broadcast: {
+	id: number;
+	clicks: KitBroadcastClick[];
+}): string {
+	if (broadcast.clicks.length === 0) {
+		return `Broadcast ${broadcast.id}: No click data available.`;
+	}
+
+	const sorted = [...broadcast.clicks].sort((a, b) => b.unique_clicks - a.unique_clicks);
+
+	const lines: string[] = [`Broadcast ${broadcast.id} — Click Analytics (${sorted.length} links):`];
+
+	for (const click of sorted) {
+		const deliveryPct = (click.click_to_delivery_rate * 100).toFixed(1);
+		const openPct = (click.click_to_open_rate * 100).toFixed(1);
+		lines.push(`  ${fmt(click.unique_clicks)} clicks — ${click.url}`);
+		lines.push(`    Delivery rate: ${deliveryPct}% | Open rate: ${openPct}%`);
 	}
 
 	return lines.join("\n");
@@ -444,6 +519,48 @@ export function formatEmailTemplateList(
 	if (pagination.has_next_page && pagination.end_cursor) {
 		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
 	}
+
+	return lines.join("\n");
+}
+
+// --- Subscriber Comparison ---
+
+export function formatSubscriberComparison(
+	results: { subscriber: KitSubscriber; stats: KitSubscriberStats }[],
+	failures: { id: number; error: string }[],
+	apiCalls: number,
+): string {
+	if (results.length === 0) {
+		const lines = ["No subscriber stats could be loaded."];
+		if (failures.length > 0) {
+			lines.push(`Failed IDs: ${failures.map((f) => `${f.id} (${f.error})`).join(", ")}`);
+		}
+		lines.push(`API calls: ${apiCalls} requests used.`);
+		return lines.join("\n");
+	}
+
+	const sorted = [...results].sort((a, b) => b.stats.open_rate - a.stats.open_rate);
+	const totalRequested = results.length + failures.length;
+
+	const lines: string[] = [
+		`Subscriber Comparison (${results.length} of ${totalRequested} loaded, sorted by open rate):`,
+		"",
+	];
+
+	for (const [i, entry] of sorted.entries()) {
+		const { subscriber: sub, stats } = entry;
+		const name = sub.first_name ?? "(no name)";
+		const lastOpen = stats.last_opened ? formatDate(stats.last_opened) : "never";
+		lines.push(
+			`  ${i + 1}. ${name} <${sub.email_address}> — Open: ${stats.open_rate.toFixed(1)}% | Click: ${stats.click_rate.toFixed(1)}% | Sent: ${fmt(stats.sent)} | Last open: ${lastOpen} (ID: ${sub.id})`,
+		);
+	}
+
+	if (failures.length > 0) {
+		lines.push(`\nNot found (skipped): IDs ${failures.map((f) => f.id).join(", ")}`);
+	}
+
+	lines.push(`API calls: ${apiCalls} requests used.`);
 
 	return lines.join("\n");
 }
