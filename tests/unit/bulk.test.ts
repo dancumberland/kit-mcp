@@ -99,6 +99,53 @@ describe("handleBulkOperations", () => {
 		expect(result).toContain("tag 1 queued for application to 2 subscribers");
 	});
 
+	it("untag_subscribers queues tag removal", async () => {
+		mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+		const { client, handleBulkOperations } = await importFresh(OAUTH_CONFIG);
+		const result = await handleBulkOperations(
+			{
+				action: "untag_subscribers",
+				tag_id: 3,
+				subscriber_ids: [10, 20, 30],
+			},
+			client,
+		);
+
+		expect(result).toContain("tag 3 queued for removal from 3 subscribers");
+	});
+
+	it("add_to_forms queues form enrollment", async () => {
+		mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+		const { client, handleBulkOperations } = await importFresh(OAUTH_CONFIG);
+		const result = await handleBulkOperations(
+			{
+				action: "add_to_forms",
+				form_id: 7,
+				emails: ["a@example.com", "b@example.com"],
+			},
+			client,
+		);
+
+		expect(result).toContain("2 subscribers queued for form 7");
+	});
+
+	it("create_custom_fields queues field creation", async () => {
+		mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+		const { client, handleBulkOperations } = await importFresh(OAUTH_CONFIG);
+		const result = await handleBulkOperations(
+			{
+				action: "create_custom_fields",
+				custom_fields: [{ label: "Role" }, { label: "Company" }],
+			},
+			client,
+		);
+
+		expect(result).toContain("2 custom fields queued for creation");
+	});
+
 	it("update_custom_fields queues field updates", async () => {
 		mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
 
