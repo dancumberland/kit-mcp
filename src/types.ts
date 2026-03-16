@@ -84,6 +84,240 @@ export interface KitColorsResponse {
 	colors: string[];
 }
 
+// --- Subscribers ---
+
+export interface KitSubscriber {
+	id: number;
+	first_name: string | null;
+	email_address: string;
+	state: string;
+	created_at: string;
+	fields: Record<string, string | null>;
+}
+
+export interface KitSubscriberResponse {
+	subscriber: KitSubscriber;
+}
+
+export interface KitSubscribersResponse {
+	subscribers: KitSubscriber[];
+	pagination: KitPagination;
+}
+
+// --- Tags ---
+
+export interface KitTag {
+	id: number;
+	name: string;
+	created_at: string;
+}
+
+export interface KitTagResponse {
+	tag: KitTag;
+}
+
+export interface KitTagsResponse {
+	tags: KitTag[];
+	pagination: KitPagination;
+}
+
+export interface KitSubscriberStats {
+	sent: number;
+	opened: number;
+	clicked: number;
+	bounced: number;
+	open_rate: number;
+	click_rate: number;
+	last_sent: string | null;
+	last_opened: string | null;
+	last_clicked: string | null;
+	sends_since_last_open: number;
+	sends_since_last_click: number;
+}
+
+export interface KitSubscriberStatsResponse {
+	subscriber: {
+		id: number;
+		stats: KitSubscriberStats;
+	};
+}
+
+// --- Sequences ---
+
+export interface KitSequence {
+	id: number;
+	name: string;
+	hold: boolean;
+	repeat: boolean;
+	created_at: string;
+}
+
+export interface KitSequencesResponse {
+	courses: KitSequence[];
+	pagination: KitPagination;
+}
+
+export interface KitSequenceResponse {
+	course: KitSequence;
+}
+
+// --- Custom Fields ---
+
+export interface KitCustomField {
+	id: number;
+	key: string;
+	label: string;
+}
+
+export interface KitCustomFieldsResponse {
+	custom_fields: KitCustomField[];
+	pagination: KitPagination;
+}
+
+export interface KitCustomFieldResponse {
+	custom_field: KitCustomField;
+}
+
+// --- Purchases ---
+
+export interface KitProduct {
+	pid: string;
+	lid: number;
+	name: string;
+	sku: string;
+	unit_price: number;
+	quantity: number;
+}
+
+export interface KitPurchase {
+	id: number;
+	transaction_id: string;
+	status: string;
+	email_address: string;
+	currency: string;
+	transaction_time: string;
+	subtotal: number;
+	discount: number;
+	tax: number;
+	total: number;
+	products: KitProduct[];
+}
+
+export interface KitPurchasesResponse {
+	purchases: KitPurchase[];
+	pagination: KitPagination;
+}
+
+export interface KitPurchaseResponse {
+	purchase: KitPurchase;
+}
+
+// --- Segments ---
+
+export interface KitSegment {
+	id: number;
+	name: string;
+	created_at: string;
+}
+
+export interface KitSegmentsResponse {
+	segments: KitSegment[];
+	pagination: KitPagination;
+}
+
+// --- Webhooks ---
+
+export interface KitWebhook {
+	id: number;
+	target_url: string;
+	event: {
+		name: string;
+	};
+}
+
+export interface KitWebhooksResponse {
+	webhooks: KitWebhook[];
+	pagination: KitPagination;
+}
+
+export interface KitWebhookResponse {
+	webhook: KitWebhook;
+}
+
+// --- Email Templates ---
+
+export interface KitEmailTemplate {
+	id: number;
+	name: string;
+}
+
+export interface KitEmailTemplatesResponse {
+	email_templates: KitEmailTemplate[];
+	pagination: KitPagination;
+}
+
+// --- Broadcasts ---
+
+export interface KitBroadcast {
+	id: number;
+	subject: string | null;
+	description: string | null;
+	content: string | null;
+	public: boolean;
+	published_at: string | null;
+	send_at: string | null;
+	thumbnail_alt: string | null;
+	thumbnail_url: string | null;
+	preview_text: string | null;
+	created_at: string;
+	email_template: { id: number; name: string } | null;
+}
+
+export interface KitBroadcastResponse {
+	broadcast: KitBroadcast;
+}
+
+export interface KitBroadcastsResponse {
+	broadcasts: KitBroadcast[];
+	pagination: KitPagination;
+}
+
+export interface KitBroadcastStatsResponse {
+	broadcast: {
+		id: number;
+		subject: string;
+		stats: {
+			recipients: number;
+			open_rate: number;
+			click_rate: number;
+			unsubscribes: number;
+			total_clicks: number;
+			show_total_clicks: boolean;
+			status: string;
+			progress: number;
+		};
+	};
+}
+
+// --- Forms ---
+
+export interface KitForm {
+	id: number;
+	name: string;
+	type: string;
+	format: string | null;
+	embed_js: string | null;
+	embed_url: string | null;
+	archived: boolean;
+	uid: string;
+	created_at: string;
+}
+
+export interface KitFormsResponse {
+	forms: KitForm[];
+	pagination: KitPagination;
+}
+
 // --- Pagination ---
 
 export interface KitPagination {

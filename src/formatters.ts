@@ -5,10 +5,22 @@
 
 import type {
 	KitAccount,
+	KitBroadcast,
 	KitCreatorProfile,
+	KitCustomField,
 	KitEmailStats,
+	KitEmailTemplate,
+	KitForm,
 	KitGrowthStats,
+	KitPagination,
+	KitPurchase,
+	KitSegment,
+	KitSequence,
+	KitSubscriber,
+	KitSubscriberStats,
+	KitTag,
 	KitUser,
+	KitWebhook,
 } from "./types.js";
 
 // --- Connection ---
@@ -78,6 +90,364 @@ export function formatAccountOverview(
 	return lines.join("\n").trimEnd();
 }
 
+// --- Subscribers ---
+
+export function formatSubscriberSummary(subscriber: KitSubscriber, tags: KitTag[]): string {
+	const lines: string[] = [
+		`Subscriber: ${subscriber.first_name ?? "(no name)"} (${subscriber.email_address})`,
+		`ID: ${subscriber.id} | State: ${subscriber.state} | Created: ${formatDate(subscriber.created_at)}`,
+	];
+
+	if (tags.length > 0) {
+		lines.push(`Tags: ${tags.map((t) => t.name).join(", ")}`);
+	}
+
+	const fieldEntries = Object.entries(subscriber.fields).filter(([, v]) => v !== null && v !== "");
+	if (fieldEntries.length > 0) {
+		lines.push(`Custom fields: ${fieldEntries.map(([k, v]) => `${k}=${v}`).join(", ")}`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatSubscriberList(
+	subscribers: KitSubscriber[],
+	pagination: KitPagination,
+): string {
+	if (subscribers.length === 0) {
+		return "No subscribers found.";
+	}
+
+	const lines: string[] = [`Subscribers (${subscribers.length} shown):`];
+
+	for (const sub of subscribers) {
+		const name = sub.first_name ?? "(no name)";
+		lines.push(`  ${name} <${sub.email_address}> — ${sub.state} (ID: ${sub.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+// --- Tags ---
+
+export function formatTagList(tags: KitTag[], pagination: KitPagination): string {
+	if (tags.length === 0) {
+		return "No tags found.";
+	}
+
+	const lines: string[] = [`Tags (${tags.length} shown):`];
+
+	for (const tag of tags) {
+		lines.push(`  ${tag.name} (ID: ${tag.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatTagDetail(tag: KitTag, verb: string): string {
+	return `Tag ${verb}: "${tag.name}" (ID: ${tag.id})`;
+}
+
+// --- Broadcasts ---
+
+export function formatBroadcastList(broadcasts: KitBroadcast[], pagination: KitPagination): string {
+	if (broadcasts.length === 0) {
+		return "No broadcasts found.";
+	}
+
+	const lines: string[] = [`Broadcasts (${broadcasts.length} shown):`];
+
+	for (const bc of broadcasts) {
+		const subject = bc.subject ?? "(no subject)";
+		const status = getBroadcastStatus(bc);
+		lines.push(`  "${subject}" — ${status} (ID: ${bc.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatBroadcastDetail(broadcast: KitBroadcast): string {
+	const lines: string[] = [
+		`Broadcast: "${broadcast.subject ?? "(no subject)"}"`,
+		`ID: ${broadcast.id} | Status: ${getBroadcastStatus(broadcast)}`,
+		`Created: ${formatDate(broadcast.created_at)}`,
+	];
+
+	if (broadcast.send_at) {
+		lines.push(`Scheduled: ${formatDate(broadcast.send_at)}`);
+	}
+	if (broadcast.published_at) {
+		lines.push(`Published: ${formatDate(broadcast.published_at)}`);
+	}
+	if (broadcast.preview_text) {
+		lines.push(`Preview: ${broadcast.preview_text}`);
+	}
+	if (broadcast.email_template) {
+		lines.push(`Template: ${broadcast.email_template.name} (ID: ${broadcast.email_template.id})`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatBroadcastStats(broadcast: {
+	id: number;
+	subject: string;
+	stats: {
+		recipients: number;
+		open_rate: number;
+		click_rate: number;
+		unsubscribes: number;
+		total_clicks: number;
+		show_total_clicks: boolean;
+		status: string;
+		progress: number;
+	};
+}): string {
+	const s = broadcast.stats;
+	const lines: string[] = [
+		`Broadcast: "${broadcast.subject}"`,
+		`Status: ${s.status} | Recipients: ${fmt(s.recipients)}`,
+		"",
+		"Performance:",
+		`  Open rate: ${s.open_rate.toFixed(1)}%`,
+		`  Click rate: ${s.click_rate.toFixed(1)}%`,
+		`  Unsubscribes: ${fmt(s.unsubscribes)}`,
+	];
+
+	if (s.show_total_clicks) {
+		lines.push(`  Total clicks: ${fmt(s.total_clicks)}`);
+	}
+
+	return lines.join("\n");
+}
+
+// --- Forms ---
+
+export function formatFormList(forms: KitForm[], pagination: KitPagination): string {
+	if (forms.length === 0) {
+		return "No forms found.";
+	}
+
+	const lines: string[] = [`Forms (${forms.length} shown):`];
+
+	for (const form of forms) {
+		const archived = form.archived ? " [archived]" : "";
+		lines.push(`  ${form.name} — ${form.type}${archived} (ID: ${form.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+// --- Subscriber Stats ---
+
+export function formatSubscriberStats(
+	subscriber: KitSubscriber,
+	stats: KitSubscriberStats,
+): string {
+	const lines: string[] = [
+		`Subscriber: ${subscriber.first_name ?? "(no name)"} (${subscriber.email_address})`,
+		`ID: ${subscriber.id} | State: ${subscriber.state}`,
+		"",
+		"Engagement Stats:",
+		`  Emails sent: ${fmt(stats.sent)} | Opened: ${fmt(stats.opened)} | Clicked: ${fmt(stats.clicked)} | Bounced: ${fmt(stats.bounced)}`,
+	];
+
+	if (stats.sent > 0) {
+		lines.push(
+			`  Open rate: ${stats.open_rate.toFixed(1)}% | Click rate: ${stats.click_rate.toFixed(1)}%`,
+		);
+	}
+
+	if (stats.last_opened) {
+		lines.push(`  Last opened: ${formatDate(stats.last_opened)}`);
+	}
+	if (stats.last_clicked) {
+		lines.push(`  Last clicked: ${formatDate(stats.last_clicked)}`);
+	}
+	if (stats.sends_since_last_open > 0) {
+		lines.push(`  Sends since last open: ${stats.sends_since_last_open}`);
+	}
+
+	return lines.join("\n");
+}
+
+// --- Sequences ---
+
+export function formatSequenceList(sequences: KitSequence[], pagination: KitPagination): string {
+	if (sequences.length === 0) {
+		return "No sequences found.";
+	}
+
+	const lines: string[] = [`Sequences (${sequences.length} shown):`];
+
+	for (const seq of sequences) {
+		const status = seq.hold ? "[paused]" : "[active]";
+		const repeat = seq.repeat ? " (repeating)" : "";
+		lines.push(`  ${seq.name} ${status}${repeat} (ID: ${seq.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+// --- Custom Fields ---
+
+export function formatCustomFieldList(fields: KitCustomField[], pagination: KitPagination): string {
+	if (fields.length === 0) {
+		return "No custom fields found.";
+	}
+
+	const lines: string[] = [`Custom Fields (${fields.length} shown):`];
+
+	for (const field of fields) {
+		lines.push(`  ${field.label} (key: ${field.key}, ID: ${field.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatCustomFieldDetail(field: KitCustomField, verb: string): string {
+	return `Custom field ${verb}: "${field.label}" (key: ${field.key}, ID: ${field.id})`;
+}
+
+// --- Purchases ---
+
+export function formatPurchaseList(purchases: KitPurchase[], pagination: KitPagination): string {
+	if (purchases.length === 0) {
+		return "No purchases found.";
+	}
+
+	const lines: string[] = [`Purchases (${purchases.length} shown):`];
+
+	for (const p of purchases) {
+		const products = p.products.map((pr) => pr.name).join(", ");
+		lines.push(
+			`  ${p.email_address} — ${p.currency} ${p.total.toFixed(2)} — ${products} (ID: ${p.id})`,
+		);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatPurchaseDetail(purchase: KitPurchase): string {
+	const lines: string[] = [
+		`Purchase (ID: ${purchase.id})`,
+		`Email: ${purchase.email_address} | Status: ${purchase.status}`,
+		`Transaction: ${purchase.transaction_id} | Date: ${formatDate(purchase.transaction_time)}`,
+		`Currency: ${purchase.currency} | Total: ${purchase.total.toFixed(2)}`,
+	];
+
+	if (purchase.subtotal !== purchase.total) {
+		lines.push(
+			`Subtotal: ${purchase.subtotal.toFixed(2)} | Discount: ${purchase.discount.toFixed(2)} | Tax: ${purchase.tax.toFixed(2)}`,
+		);
+	}
+
+	if (purchase.products.length > 0) {
+		lines.push("");
+		lines.push("Products:");
+		for (const p of purchase.products) {
+			lines.push(`  ${p.name} — ${p.quantity}x ${p.unit_price.toFixed(2)} (SKU: ${p.sku})`);
+		}
+	}
+
+	return lines.join("\n");
+}
+
+// --- Segments ---
+
+export function formatSegmentList(segments: KitSegment[], pagination: KitPagination): string {
+	if (segments.length === 0) {
+		return "No segments found.";
+	}
+
+	const lines: string[] = [`Segments (${segments.length} shown):`];
+
+	for (const seg of segments) {
+		lines.push(`  ${seg.name} (ID: ${seg.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+// --- Webhooks ---
+
+export function formatWebhookList(webhooks: KitWebhook[], pagination: KitPagination): string {
+	if (webhooks.length === 0) {
+		return "No webhooks found.";
+	}
+
+	const lines: string[] = [`Webhooks (${webhooks.length} shown):`];
+
+	for (const wh of webhooks) {
+		lines.push(`  ${wh.event.name} → ${wh.target_url} (ID: ${wh.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatWebhookDetail(webhook: KitWebhook, verb: string): string {
+	return `Webhook ${verb}: ${webhook.event.name} → ${webhook.target_url} (ID: ${webhook.id})`;
+}
+
+// --- Email Templates ---
+
+export function formatEmailTemplateList(
+	templates: KitEmailTemplate[],
+	pagination: KitPagination,
+): string {
+	if (templates.length === 0) {
+		return "No email templates found.";
+	}
+
+	const lines: string[] = [`Email Templates (${templates.length} shown):`];
+
+	for (const t of templates) {
+		lines.push(`  ${t.name} (ID: ${t.id})`);
+	}
+
+	if (pagination.has_next_page && pagination.end_cursor) {
+		lines.push(`\nNext page: use cursor "${pagination.end_cursor}"`);
+	}
+
+	return lines.join("\n");
+}
+
 // --- Helpers ---
 
 function formatPlanType(planType: string): string {
@@ -90,4 +460,17 @@ function formatPlanType(planType: string): string {
 /** Format number with locale-aware separators */
 function fmt(n: number): string {
 	return n.toLocaleString("en-US");
+}
+
+/** Format ISO date to readable short format */
+function formatDate(iso: string): string {
+	const d = new Date(iso);
+	if (Number.isNaN(d.getTime())) return iso;
+	return d.toISOString().split("T")[0] as string;
+}
+
+function getBroadcastStatus(broadcast: KitBroadcast): string {
+	if (broadcast.published_at) return "sent";
+	if (broadcast.send_at) return "scheduled";
+	return "draft";
 }
