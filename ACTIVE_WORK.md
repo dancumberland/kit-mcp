@@ -4,17 +4,16 @@ Last updated: 2026-03-15
 
 ## In Progress
 
-Working on: Phase 4 — integration tests, README polish, CI, version bump to 1.0.0
-Key files: tests/integration/, README.md, .github/workflows/, package.json, server.json
-Current step: Building integration tests and README
+Nothing — v1.0.0 complete, ready to publish
 
 ## Completed Today
 
 - Phase 1: Foundation (client, errors, formatters, test_connection, get_account) — 42 tests
 - Phase 2: 4 composite tools (subscribers, tags, broadcasts, forms) — 51 tests
 - Phase 3: 7 composite tools (sequences, custom-fields, purchases, segments, webhooks, email-templates, bulk) — 47 tests
-- API corrections applied: subscriber stats endpoint, tag create/update body format, broadcast email_template_id optional
-- All 13 tools registered in server.ts, 140 tests passing, 60.73 KB build
+- API corrections: subscriber stats endpoint, tag body format, broadcast email_template_id optional, sequences response key fix
+- Phase 4: Integration tests (12 passing), CI pipeline, README polish, version bump to 1.0.0
+- All 13 tools registered, 140 unit tests + 12 integration tests, 60.73 KB build
 
 ## Context
 
@@ -25,8 +24,6 @@ Current step: Building integration tests and README
 
 ## Next Up
 
-- Phase 4: Integration tests (requires KIT_API_KEY env var)
-- README polish with usage examples
-- npm publish v1.0.0
+- npm publish v1.0.0 (requires `npm adduser`)
+- GitHub repo creation at github.com/dancumberland/kit-mcp
 - MCP Registry listing
-- GitHub repo creation
