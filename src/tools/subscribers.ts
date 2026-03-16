@@ -27,7 +27,7 @@ export const ManageSubscribersSchema = z.discriminatedUnion("action", [
 	z.object({
 		action: z.literal("find"),
 		email: z.string().describe("Find by email address").optional(),
-		id: z.number().int().positive().describe("Find by subscriber ID").optional(),
+		id: z.coerce.number().int().positive().describe("Find by subscriber ID").optional(),
 	}),
 	z.object({
 		action: z.literal("list"),
@@ -56,18 +56,18 @@ export const ManageSubscribersSchema = z.discriminatedUnion("action", [
 	}),
 	z.object({
 		action: z.literal("update"),
-		id: z.number().int().positive().describe("Subscriber ID (required)"),
+		id: z.coerce.number().int().positive().describe("Subscriber ID (required)"),
 		first_name: z.string().describe("Updated first name").optional(),
 		fields: z.record(z.string()).describe("Custom field key-value pairs to update").optional(),
 	}),
 	z.object({
 		action: z.literal("unsubscribe"),
 		email: z.string().describe("Unsubscribe by email address").optional(),
-		id: z.number().int().positive().describe("Unsubscribe by subscriber ID").optional(),
+		id: z.coerce.number().int().positive().describe("Unsubscribe by subscriber ID").optional(),
 	}),
 	z.object({
 		action: z.literal("stats"),
-		id: z.number().int().positive().describe("Subscriber ID (required)"),
+		id: z.coerce.number().int().positive().describe("Subscriber ID (required)"),
 	}),
 	z.object({
 		action: z.literal("filter"),
@@ -75,10 +75,10 @@ export const ManageSubscribersSchema = z.discriminatedUnion("action", [
 			.enum(["active", "inactive", "bounced", "complained", "cancelled"])
 			.describe("Filter by subscriber state")
 			.optional(),
-		tag_id: z.number().int().positive().describe("Filter by tag ID").optional(),
+		tag_id: z.coerce.number().int().positive().describe("Filter by tag ID").optional(),
 		created_after: z.string().describe("Created after date (ISO 8601)").optional(),
 		created_before: z.string().describe("Created before date (ISO 8601)").optional(),
-		page_size: z.number().int().min(1).max(500).optional(),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().optional(),
 		sort_order: z.enum(["asc", "desc"]).optional(),
 	}),

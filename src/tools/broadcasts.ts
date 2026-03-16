@@ -21,12 +21,12 @@ export const ManageBroadcastsSchema = z.discriminatedUnion("action", [
 			.enum(["draft", "scheduled", "sent"])
 			.describe("Filter by broadcast status")
 			.optional(),
-		page_size: z.number().int().min(1).max(100).optional(),
+		page_size: z.coerce.number().int().min(1).max(100).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 	z.object({
 		action: z.literal("get"),
-		id: z.number().int().positive().describe("Broadcast ID (required)"),
+		id: z.coerce.number().int().positive().describe("Broadcast ID (required)"),
 	}),
 	z.object({
 		action: z.literal("create"),
@@ -45,13 +45,16 @@ export const ManageBroadcastsSchema = z.discriminatedUnion("action", [
 			.string()
 			.describe("Schedule send time (ISO 8601). Omit to save as draft.")
 			.optional(),
-		segment_ids: z.array(z.number()).describe("Send to specific segment IDs").optional(),
-		tag_ids: z.array(z.number()).describe("Send to subscribers with these tag IDs").optional(),
+		segment_ids: z.array(z.coerce.number()).describe("Send to specific segment IDs").optional(),
+		tag_ids: z
+			.array(z.coerce.number())
+			.describe("Send to subscribers with these tag IDs")
+			.optional(),
 		public: z.boolean().describe("Make broadcast publicly viewable").optional(),
 	}),
 	z.object({
 		action: z.literal("update"),
-		id: z.number().int().positive().describe("Broadcast ID (required)"),
+		id: z.coerce.number().int().positive().describe("Broadcast ID (required)"),
 		subject: z.string().min(1).max(500).optional(),
 		content: z.string().min(1).describe("Updated HTML body").optional(),
 		preview_text: z.string().max(300).optional(),
@@ -59,11 +62,11 @@ export const ManageBroadcastsSchema = z.discriminatedUnion("action", [
 	}),
 	z.object({
 		action: z.literal("delete"),
-		id: z.number().int().positive().describe("Broadcast ID (required)"),
+		id: z.coerce.number().int().positive().describe("Broadcast ID (required)"),
 	}),
 	z.object({
 		action: z.literal("stats"),
-		id: z.number().int().positive().describe("Broadcast ID (required)"),
+		id: z.coerce.number().int().positive().describe("Broadcast ID (required)"),
 	}),
 ]);
 

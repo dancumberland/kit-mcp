@@ -18,19 +18,19 @@ import type {
 export const ManageSequencesSchema = z.discriminatedUnion("action", [
 	z.object({
 		action: z.literal("list"),
-		page_size: z.number().int().min(1).max(500).optional(),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 	z.object({
 		action: z.literal("add_subscriber"),
-		sequence_id: z.number().int().positive().describe("Sequence ID (required)"),
+		sequence_id: z.coerce.number().int().positive().describe("Sequence ID (required)"),
 		email: z.string().describe("Subscriber email address").optional(),
-		subscriber_id: z.number().int().positive().describe("Subscriber ID").optional(),
+		subscriber_id: z.coerce.number().int().positive().describe("Subscriber ID").optional(),
 	}),
 	z.object({
 		action: z.literal("list_subscribers"),
-		sequence_id: z.number().int().positive().describe("Sequence ID (required)"),
-		page_size: z.number().int().min(1).max(500).optional(),
+		sequence_id: z.coerce.number().int().positive().describe("Sequence ID (required)"),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 ]);

@@ -20,7 +20,7 @@ export const ManageCustomFieldsSchema = z.discriminatedUnion("action", [
 	}),
 	z.object({
 		action: z.literal("update"),
-		id: z.number().int().positive().describe("Custom field ID (required)"),
+		id: z.coerce.number().int().positive().describe("Custom field ID (required)"),
 		label: z
 			.string()
 			.min(1)

@@ -15,12 +15,12 @@ import type { KitPurchaseResponse, KitPurchasesResponse } from "../types.js";
 export const ManagePurchasesSchema = z.discriminatedUnion("action", [
 	z.object({
 		action: z.literal("list"),
-		page_size: z.number().int().min(1).max(500).optional(),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 	z.object({
 		action: z.literal("get"),
-		id: z.number().int().positive().describe("Purchase ID (required)"),
+		id: z.coerce.number().int().positive().describe("Purchase ID (required)"),
 	}),
 	z.object({
 		action: z.literal("create"),
@@ -28,11 +28,11 @@ export const ManagePurchasesSchema = z.discriminatedUnion("action", [
 		transaction_id: z.string().describe("Unique transaction ID (required)"),
 		currency: z.string().describe("3-letter currency code (e.g. USD)").optional(),
 		transaction_time: z.string().describe("Transaction time (ISO 8601)").optional(),
-		subtotal: z.number().describe("Subtotal before tax/discount").optional(),
-		tax: z.number().describe("Tax amount").optional(),
-		shipping: z.number().describe("Shipping cost").optional(),
-		discount: z.number().describe("Discount amount").optional(),
-		total: z.number().describe("Total amount").optional(),
+		subtotal: z.coerce.number().describe("Subtotal before tax/discount").optional(),
+		tax: z.coerce.number().describe("Tax amount").optional(),
+		shipping: z.coerce.number().describe("Shipping cost").optional(),
+		discount: z.coerce.number().describe("Discount amount").optional(),
+		total: z.coerce.number().describe("Total amount").optional(),
 		status: z.enum(["paid", "refund"]).describe("Transaction status").optional(),
 		products: z
 			.array(
@@ -40,8 +40,8 @@ export const ManagePurchasesSchema = z.discriminatedUnion("action", [
 					name: z.string().describe("Product name"),
 					pid: z.string().describe("Product ID").optional(),
 					sku: z.string().describe("Product SKU").optional(),
-					unit_price: z.number().describe("Unit price").optional(),
-					quantity: z.number().int().describe("Quantity").optional(),
+					unit_price: z.coerce.number().describe("Unit price").optional(),
+					quantity: z.coerce.number().int().describe("Quantity").optional(),
 				}),
 			)
 			.describe("Products in this purchase")

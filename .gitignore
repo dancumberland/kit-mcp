@@ -23,3 +23,5 @@ coverage/
 
 # Claude local settings (not shared)
 .claude/settings.local.json
+.mcpregistry_*
+mcp-publisher

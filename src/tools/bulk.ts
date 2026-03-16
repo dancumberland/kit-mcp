@@ -36,30 +36,30 @@ export const BulkOperationsSchema = z.discriminatedUnion("action", [
 	}),
 	z.object({
 		action: z.literal("tag_subscribers"),
-		tag_id: z.number().int().positive().describe("Tag ID to apply (required)"),
+		tag_id: z.coerce.number().int().positive().describe("Tag ID to apply (required)"),
 		emails: z.array(z.string()).describe("Subscriber emails to tag").optional(),
 		subscriber_ids: z
-			.array(z.number().int().positive())
+			.array(z.coerce.number().int().positive())
 			.describe("Subscriber IDs to tag")
 			.optional(),
 		callback_url: z.string().url().optional(),
 	}),
 	z.object({
 		action: z.literal("untag_subscribers"),
-		tag_id: z.number().int().positive().describe("Tag ID to remove (required)"),
+		tag_id: z.coerce.number().int().positive().describe("Tag ID to remove (required)"),
 		emails: z.array(z.string()).describe("Subscriber emails to untag").optional(),
 		subscriber_ids: z
-			.array(z.number().int().positive())
+			.array(z.coerce.number().int().positive())
 			.describe("Subscriber IDs to untag")
 			.optional(),
 		callback_url: z.string().url().optional(),
 	}),
 	z.object({
 		action: z.literal("add_to_forms"),
-		form_id: z.number().int().positive().describe("Form ID (required)"),
+		form_id: z.coerce.number().int().positive().describe("Form ID (required)"),
 		emails: z.array(z.string()).describe("Subscriber emails to add").optional(),
 		subscriber_ids: z
-			.array(z.number().int().positive())
+			.array(z.coerce.number().int().positive())
 			.describe("Subscriber IDs to add")
 			.optional(),
 		callback_url: z.string().url().optional(),
@@ -74,11 +74,11 @@ export const BulkOperationsSchema = z.discriminatedUnion("action", [
 	}),
 	z.object({
 		action: z.literal("update_custom_fields"),
-		custom_field_id: z.number().int().positive().describe("Custom field ID (required)"),
+		custom_field_id: z.coerce.number().int().positive().describe("Custom field ID (required)"),
 		subscribers: z
 			.array(
 				z.object({
-					id: z.number().int().positive().describe("Subscriber ID"),
+					id: z.coerce.number().int().positive().describe("Subscriber ID"),
 					value: z.string().describe("Field value to set"),
 				}),
 			)

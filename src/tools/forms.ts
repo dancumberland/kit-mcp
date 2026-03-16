@@ -14,20 +14,20 @@ import type { KitFormsResponse, KitSubscriberResponse, KitSubscribersResponse } 
 export const ManageFormsSchema = z.discriminatedUnion("action", [
 	z.object({
 		action: z.literal("list"),
-		page_size: z.number().int().min(1).max(500).optional(),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 	z.object({
 		action: z.literal("list_subscribers"),
-		form_id: z.number().int().positive().describe("Form ID (required)"),
-		page_size: z.number().int().min(1).max(500).optional(),
+		form_id: z.coerce.number().int().positive().describe("Form ID (required)"),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 	z.object({
 		action: z.literal("add_subscriber"),
-		form_id: z.number().int().positive().describe("Form ID (required)"),
+		form_id: z.coerce.number().int().positive().describe("Form ID (required)"),
 		email: z.string().describe("Subscriber email address").optional(),
-		subscriber_id: z.number().int().positive().describe("Subscriber ID").optional(),
+		subscriber_id: z.coerce.number().int().positive().describe("Subscriber ID").optional(),
 	}),
 ]);
 

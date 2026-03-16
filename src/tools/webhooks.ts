@@ -25,7 +25,7 @@ export const ManageWebhooksSchema = z.discriminatedUnion("action", [
 	}),
 	z.object({
 		action: z.literal("delete"),
-		id: z.number().int().positive().describe("Webhook ID (required)"),
+		id: z.coerce.number().int().positive().describe("Webhook ID (required)"),
 	}),
 ]);
 

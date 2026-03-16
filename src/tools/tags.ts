@@ -14,7 +14,7 @@ import type { KitSubscribersResponse, KitTagResponse, KitTagsResponse } from "..
 export const ManageTagsSchema = z.discriminatedUnion("action", [
 	z.object({
 		action: z.literal("list"),
-		page_size: z.number().int().min(1).max(500).optional(),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 	z.object({
@@ -23,24 +23,24 @@ export const ManageTagsSchema = z.discriminatedUnion("action", [
 	}),
 	z.object({
 		action: z.literal("update"),
-		id: z.number().int().positive().describe("Tag ID (required)"),
+		id: z.coerce.number().int().positive().describe("Tag ID (required)"),
 		name: z.string().min(1).describe("New tag name (required)"),
 	}),
 	z.object({
 		action: z.literal("tag_subscriber"),
-		tag_id: z.number().int().positive().describe("Tag ID (required)"),
+		tag_id: z.coerce.number().int().positive().describe("Tag ID (required)"),
 		email: z.string().describe("Subscriber email address").optional(),
-		subscriber_id: z.number().int().positive().describe("Subscriber ID").optional(),
+		subscriber_id: z.coerce.number().int().positive().describe("Subscriber ID").optional(),
 	}),
 	z.object({
 		action: z.literal("untag_subscriber"),
-		tag_id: z.number().int().positive().describe("Tag ID (required)"),
-		subscriber_id: z.number().int().positive().describe("Subscriber ID (required)"),
+		tag_id: z.coerce.number().int().positive().describe("Tag ID (required)"),
+		subscriber_id: z.coerce.number().int().positive().describe("Subscriber ID (required)"),
 	}),
 	z.object({
 		action: z.literal("list_subscribers"),
-		tag_id: z.number().int().positive().describe("Tag ID (required)"),
-		page_size: z.number().int().min(1).max(500).optional(),
+		tag_id: z.coerce.number().int().positive().describe("Tag ID (required)"),
+		page_size: z.coerce.number().int().min(1).max(500).optional(),
 		cursor: z.string().describe("Pagination cursor").optional(),
 	}),
 ]);
