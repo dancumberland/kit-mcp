@@ -4,37 +4,27 @@ Last updated: 2026-03-15
 
 ## In Progress
 
-Nothing — Phase 1 complete, ready for Phase 2.
+Nothing — Phase 1-3 complete, all 13 tools built
 
 ## Completed Today
 
-- Project directory created at ~/Documents/Work/AI_Tools/Kit_MCP
-- PRD copied from Dan_Content/docs/kit-mcp-server-PRD.md → docs/PRD.md
-- Git repo initialized
-- Full project config: package.json, tsconfig.json, tsup.config.ts, biome.json
-- .claude/CLAUDE.md with architecture summary and hard rules
-- server.json (MCP Registry metadata), README.md, LICENSE
-- npm install — all dependencies installed
-- Phase 1 Foundation: all 8 source files built, passing lint/typecheck/build/42 tests
-  - src/errors.ts — 7 typed error classes (KitApiError, KitAuthError, KitRateLimitError, KitValidationError, KitNotFoundError, KitOAuthRequiredError, KitServerError) + formatError()
-  - src/types.ts — shared types for Kit V4 API responses (account, profile, email stats, growth stats, pagination)
-  - src/client.ts — KitClient with sliding window rate limiter, auth detection (API key vs OAuth), retry logic (429: 3 retries, 5xx: 1 retry, 422: never)
-  - src/formatters.ts — formatConnectionSuccess(), formatAccountOverview() — agent-friendly text output
-  - src/tools/connection.ts — test_connection handler
-  - src/tools/account.ts — get_account handler (composes 4 API calls in parallel)
-  - src/server.ts — McpServer setup with registerTool() for both tools
-  - src/index.ts — entry point with StdioServerTransport
-- 4 test files, 42 unit tests covering errors, formatters, client, and tool handlers
+- Phase 1: Foundation (client, errors, formatters, test_connection, get_account) — 42 tests
+- Phase 2: 4 composite tools (subscribers, tags, broadcasts, forms) — 51 tests
+- Phase 3: 7 composite tools (sequences, custom-fields, purchases, segments, webhooks, email-templates, bulk) — 47 tests
+- API corrections applied: subscriber stats endpoint, tag create/update body format, broadcast email_template_id optional
+- All 13 tools registered in server.ts, 140 tests passing, 60.73 KB build
 
 ## Context
 
-- npm not logged in — need `npm adduser` to register @dancumberland/kit-mcp
-- Phase 1 acceptance criteria met: 2 tools registered, typed errors, rate limiting, formatted output, zero `any` types, all tests pass
+- 13/13 tools built (at ceiling of 15)
+- Build output: 60.73 KB ESM
+- Zero `any` types, zero lint issues
+- OAuth-gated tools: manage_purchases, bulk_operations
 
 ## Next Up
 
-- Register @dancumberland/kit-mcp on npm (requires npm login)
-- Phase 2: manage_subscribers (7 actions, 9 endpoints)
-- Phase 2: manage_tags (6 actions, 8 endpoints)
-- Phase 2: manage_broadcasts (6 actions, 8 endpoints)
-- Phase 2: manage_forms (3 actions, 4 endpoints)
+- Phase 4: Integration tests (requires KIT_API_KEY env var)
+- README polish with usage examples
+- npm publish v1.0.0
+- MCP Registry listing
+- GitHub repo creation
