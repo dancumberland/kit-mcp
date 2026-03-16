@@ -1,17 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dancumberland/kit-mcp",
-  "description": "Agent-optimized MCP server for Kit.com email marketing. 13 smart tools covering 100% of the Kit V4 API — formatted responses, rate limiting, typed errors.",
+  "description": "Agent-optimized MCP server for Kit.com email marketing. 13 composite tools, 100% V4 API.",
   "title": "Kit.com MCP Server",
   "repository": {
     "url": "https://github.com/dancumberland/kit-mcp",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@dancumberland/kit-mcp",
+      "version": "1.0.1",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         {

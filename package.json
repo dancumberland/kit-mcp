@@ -1,6 +1,7 @@
 {
   "name": "@dancumberland/kit-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "mcpName": "io.github.dancumberland/kit-mcp",
   "description": "Agent-optimized MCP server for Kit.com email marketing. 13 composite tools covering 100% of the Kit V4 API.",
   "type": "module",
   "bin": {
