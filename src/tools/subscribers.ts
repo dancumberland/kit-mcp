@@ -1,6 +1,6 @@
 /**
- * manage_subscribers — 9 actions covering subscriber management.
- * Actions: find, list, create, update, unsubscribe, stats, compare_stats, filter, engagement_filter
+ * manage_subscribers — 10 actions covering subscriber management.
+ * Actions: find, list, create, update, unsubscribe, stats, compare_stats, top_engaged, filter, engagement_filter
  */
 
 import { z } from "zod";
@@ -84,6 +84,30 @@ export const ManageSubscribersSchema = z.discriminatedUnion("action", [
 			),
 	}),
 	z.object({
+		action: z.literal("top_engaged"),
+		min_opens: z.coerce
+			.number()
+			.int()
+			.min(1)
+			.default(5)
+			.describe("Minimum email opens to qualify (default: 5)"),
+		subscribed_before: z
+			.string()
+			.describe("Only include subscribers who joined before this date (YYYY-MM-DD)")
+			.optional(),
+		subscribed_after: z
+			.string()
+			.describe("Only include subscribers who joined after this date (YYYY-MM-DD)")
+			.optional(),
+		count: z.coerce
+			.number()
+			.int()
+			.min(1)
+			.max(100)
+			.default(25)
+			.describe("How many top engaged subscribers to return (default 25, max 100)"),
+	}),
+	z.object({
 		action: z.literal("filter"),
 		status: z
 			.enum(["active", "inactive", "bounced", "complained", "cancelled"])
@@ -152,6 +176,8 @@ export async function handleManageSubscribers(
 			return handleStats(args, client);
 		case "compare_stats":
 			return handleCompareStats(args, client);
+		case "top_engaged":
+			return handleTopEngaged(args, client);
 		case "filter":
 			return handleFilter(args, client);
 		case "engagement_filter":
@@ -291,14 +317,75 @@ async function handleCompareStats(
 	args: Extract<ManageSubscribersArgs, { action: "compare_stats" }>,
 	client: KitClient,
 ): Promise<string> {
+	const { results, failures, apiCalls } = await fetchBatchedStats(args.ids, client);
+	return formatSubscriberComparison(results, failures, apiCalls);
+}
+
+async function handleTopEngaged(
+	args: Extract<ManageSubscribersArgs, { action: "top_engaged" }>,
+	client: KitClient,
+): Promise<string> {
+	// Build engagement filter conditions
+	const filters: Record<string, unknown>[] = [
+		{ type: "opens", count_greater_than: args.min_opens - 1 },
+	];
+	if (args.subscribed_before) {
+		filters.push({ type: "subscribed", before: args.subscribed_before });
+	}
+	if (args.subscribed_after) {
+		filters.push({ type: "subscribed", after: args.subscribed_after });
+	}
+
+	// Auto-paginate up to 4 pages (2000 candidates max)
+	const allIds: number[] = [];
+	let cursor: string | undefined;
+	const MAX_PAGES = 4;
+
+	for (let page = 0; page < MAX_PAGES; page++) {
+		const body: Record<string, unknown> = { all: filters, per_page: 500 };
+		if (cursor) body.after = cursor;
+
+		const data = await client.post<KitFilteredSubscribersResponse>("/subscribers/filter", body);
+
+		for (const sub of data.subscribers) {
+			allIds.push(Number(sub.id));
+		}
+
+		if (!data.pagination.has_next_page || !data.pagination.end_cursor) break;
+		cursor = data.pagination.end_cursor;
+	}
+
+	if (allIds.length === 0) {
+		return "No subscribers matched the engagement criteria. Try lowering min_opens or broadening date filters.";
+	}
+
+	// Take first `count` IDs and fetch their stats
+	const targetIds = allIds.slice(0, args.count);
+	const { results, failures, apiCalls } = await fetchBatchedStats(targetIds, client);
+
+	const filterApiCalls = cursor
+		? MAX_PAGES
+		: Math.min(MAX_PAGES, 1 + (allIds.length > 500 ? Math.ceil(allIds.length / 500) - 1 : 0));
+	const totalApiCalls = filterApiCalls + apiCalls;
+
+	return formatSubscriberComparison(results, failures, totalApiCalls);
+}
+
+async function fetchBatchedStats(
+	ids: number[],
+	client: KitClient,
+): Promise<{
+	results: { subscriber: KitSubscriber; stats: KitSubscriberStats }[];
+	failures: { id: number; error: string }[];
+	apiCalls: number;
+}> {
 	const BATCH_SIZE = 5;
 	const results: { subscriber: KitSubscriber; stats: KitSubscriberStats }[] = [];
 	const failures: { id: number; error: string }[] = [];
 	let apiCalls = 0;
 
-	// Process IDs in batches of 5 to avoid rate limiter race conditions
-	for (let i = 0; i < args.ids.length; i += BATCH_SIZE) {
-		const batch = args.ids.slice(i, i + BATCH_SIZE);
+	for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+		const batch = ids.slice(i, i + BATCH_SIZE);
 
 		const settled = await Promise.allSettled(
 			batch.map(async (id) => {
@@ -315,7 +402,7 @@ async function handleCompareStats(
 
 		for (const [j, result] of settled.entries()) {
 			const id = batch[j] as number;
-			apiCalls += 2; // 2 API calls per subscriber regardless of success/failure
+			apiCalls += 2;
 
 			if (result.status === "fulfilled") {
 				results.push(result.value);
@@ -326,7 +413,7 @@ async function handleCompareStats(
 		}
 	}
 
-	return formatSubscriberComparison(results, failures, apiCalls);
+	return { results, failures, apiCalls };
 }
 
 async function handleFilter(

@@ -566,6 +566,281 @@ describe("handleManageSubscribers", () => {
 		expect(result).toContain("API calls: 4");
 	});
 
+	it("top_engaged calls filter then fetches stats, returns ranked results", async () => {
+		const filteredSubs = [
+			{
+				id: "100",
+				first_name: "Alice",
+				email_address: "alice@example.com",
+				created_at: "2024-06-01T00:00:00Z",
+				tag_names: [],
+				tag_ids: [],
+			},
+			{
+				id: "200",
+				first_name: "Bob",
+				email_address: "bob@example.com",
+				created_at: "2024-03-15T00:00:00Z",
+				tag_names: [],
+				tag_ids: [],
+			},
+		];
+
+		const sub1 = {
+			...mockSubscriber,
+			id: 100,
+			first_name: "Alice",
+			email_address: "alice@example.com",
+		};
+		const sub2 = {
+			...mockSubscriber,
+			id: 200,
+			first_name: "Bob",
+			email_address: "bob@example.com",
+		};
+
+		const makeStats = (id: number, openRate: number) => ({
+			subscriber: {
+				id,
+				stats: {
+					sent: 100,
+					opened: openRate,
+					clicked: 5,
+					bounced: 0,
+					open_rate: openRate,
+					click_rate: 5.0,
+					last_sent: null,
+					last_opened: null,
+					last_clicked: null,
+					sends_since_last_open: 0,
+					sends_since_last_click: 0,
+				},
+			},
+		});
+
+		// 1. Filter call
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: filteredSubs,
+					pagination: { ...mockPagination, has_next_page: false, total_count: 2 },
+				}),
+				{ status: 200 },
+			),
+		);
+		// 2. Stats for sub 100 (batch of 2)
+		mockFetch.mockResolvedValueOnce(
+			new Response(JSON.stringify({ subscriber: sub1 }), { status: 200 }),
+		);
+		mockFetch.mockResolvedValueOnce(
+			new Response(JSON.stringify(makeStats(100, 40.0)), { status: 200 }),
+		);
+		mockFetch.mockResolvedValueOnce(
+			new Response(JSON.stringify({ subscriber: sub2 }), { status: 200 }),
+		);
+		mockFetch.mockResolvedValueOnce(
+			new Response(JSON.stringify(makeStats(200, 60.0)), { status: 200 }),
+		);
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{ action: "top_engaged", min_opens: 5, count: 25 },
+			client,
+		);
+
+		// Bob (60%) should rank above Alice (40%)
+		expect(result).toContain("Subscriber Comparison");
+		const bobIdx = result.indexOf("Bob");
+		const aliceIdx = result.indexOf("Alice");
+		expect(bobIdx).toBeLessThan(aliceIdx);
+
+		// Verify filter POST body
+		const [filterUrl, filterOpts] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(filterUrl).toContain("/subscribers/filter");
+		const filterBody = JSON.parse(filterOpts.body as string);
+		expect(filterBody.all).toEqual([{ type: "opens", count_greater_than: 4 }]);
+	});
+
+	it("top_engaged respects count param", async () => {
+		const filteredSubs = Array.from({ length: 10 }, (_, i) => ({
+			id: String(i + 1),
+			first_name: `Sub${i}`,
+			email_address: `s${i}@example.com`,
+			created_at: "2024-01-01T00:00:00Z",
+			tag_names: [],
+			tag_ids: [],
+		}));
+
+		// Filter returns 10
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: filteredSubs,
+					pagination: { ...mockPagination, has_next_page: false, total_count: 10 },
+				}),
+				{ status: 200 },
+			),
+		);
+		// Only 3 should be fetched (count=3) — 3 subs × 2 calls = 6
+		for (let i = 0; i < 3; i++) {
+			mockFetch.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						subscriber: { ...mockSubscriber, id: i + 1, email_address: `s${i}@example.com` },
+					}),
+					{ status: 200 },
+				),
+			);
+			mockFetch.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						subscriber: {
+							id: i + 1,
+							stats: {
+								sent: 50,
+								opened: 25,
+								clicked: 5,
+								bounced: 0,
+								open_rate: 50.0,
+								click_rate: 10.0,
+								last_sent: null,
+								last_opened: null,
+								last_clicked: null,
+								sends_since_last_open: 0,
+								sends_since_last_click: 0,
+							},
+						},
+					}),
+					{ status: 200 },
+				),
+			);
+		}
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{ action: "top_engaged", min_opens: 1, count: 3 },
+			client,
+		);
+
+		expect(result).toContain("3 of 3 loaded");
+		// 1 filter call + 6 stats calls = 7 total fetch calls
+		expect(mockFetch).toHaveBeenCalledTimes(7);
+	});
+
+	it("top_engaged handles zero filter results gracefully", async () => {
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: [],
+					pagination: { ...mockPagination, has_next_page: false, total_count: 0 },
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{ action: "top_engaged", min_opens: 100, count: 25 },
+			client,
+		);
+
+		expect(result).toContain("No subscribers matched");
+	});
+
+	it("top_engaged auto-paginates when more pages available", async () => {
+		const page1 = Array.from({ length: 2 }, (_, i) => ({
+			id: String(i + 1),
+			first_name: `P1Sub${i}`,
+			email_address: `p1s${i}@example.com`,
+			created_at: "2024-01-01T00:00:00Z",
+			tag_names: [],
+			tag_ids: [],
+		}));
+		const page2 = Array.from({ length: 1 }, (_, i) => ({
+			id: String(i + 3),
+			first_name: `P2Sub${i}`,
+			email_address: `p2s${i}@example.com`,
+			created_at: "2024-01-01T00:00:00Z",
+			tag_names: [],
+			tag_ids: [],
+		}));
+
+		// Page 1 — has next
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: page1,
+					pagination: {
+						...mockPagination,
+						has_next_page: true,
+						end_cursor: "page2cursor",
+						total_count: 3,
+					},
+				}),
+				{ status: 200 },
+			),
+		);
+		// Page 2 — no next
+		mockFetch.mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					subscribers: page2,
+					pagination: { ...mockPagination, has_next_page: false, total_count: 3 },
+				}),
+				{ status: 200 },
+			),
+		);
+		// Stats for 3 subs
+		for (let i = 0; i < 3; i++) {
+			mockFetch.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						subscriber: { ...mockSubscriber, id: i + 1, email_address: `s${i}@example.com` },
+					}),
+					{ status: 200 },
+				),
+			);
+			mockFetch.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						subscriber: {
+							id: i + 1,
+							stats: {
+								sent: 50,
+								opened: 25,
+								clicked: 5,
+								bounced: 0,
+								open_rate: 50.0,
+								click_rate: 10.0,
+								last_sent: null,
+								last_opened: null,
+								last_clicked: null,
+								sends_since_last_open: 0,
+								sends_since_last_click: 0,
+							},
+						},
+					}),
+					{ status: 200 },
+				),
+			);
+		}
+
+		const { client, handleManageSubscribers } = await importFresh();
+		const result = await handleManageSubscribers(
+			{ action: "top_engaged", min_opens: 1, count: 25 },
+			client,
+		);
+
+		expect(result).toContain("3 of 3 loaded");
+		// 2 filter calls + 6 stats calls = 8
+		expect(mockFetch).toHaveBeenCalledTimes(8);
+
+		// Verify second filter call used cursor
+		const [, page2Opts] = mockFetch.mock.calls[1] as [string, RequestInit];
+		const page2Body = JSON.parse(page2Opts.body as string);
+		expect(page2Body.after).toBe("page2cursor");
+	});
+
 	it("filter by status returns filtered list", async () => {
 		mockFetch.mockResolvedValueOnce(
 			new Response(

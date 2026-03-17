@@ -8,7 +8,7 @@ Other Kit MCP servers wrap each API endpoint as a separate tool (29+ tools). Tha
 
 | | **@dancumberland/kit-mcp** | **Other Kit MCPs** |
 |---|---|---|
-| **Tool count** | 13 composite tools (44 actions) | 29+ individual tools |
+| **Tool count** | 13 composite tools (45 actions) | 29+ individual tools |
 | **Engagement analytics** | Per-subscriber open/click rates, batch comparison across 100 subscribers, engagement-based filtering | None |
 | **Broadcast analytics** | Per-broadcast stats, cross-broadcast comparison, per-link click tracking | Basic list/get only |
 | **Bulk operations** | Batch create subscribers, tags, form subscriptions (up to 10k per call) | None |
@@ -149,7 +149,7 @@ Add to `.claude/settings.local.json` or `~/.claude/settings.json`:
 
 | Tool | Actions | What You Can Do |
 |------|---------|-----------------|
-| `manage_subscribers` | 9 | Find, list, create, update, unsubscribe, view stats, compare engagement across up to 100 subscribers, filter by status/tags, filter by engagement metrics |
+| `manage_subscribers` | 10 | Find, list, create, update, unsubscribe, view stats, compare engagement across up to 100 subscribers, find top engaged subscribers in one call, filter by status/tags, filter by engagement metrics |
 | `manage_tags` | 6 | List, create, update, tag/untag subscribers, list tagged |
 | `manage_broadcasts` | 8 | List, get, create drafts, update, delete, view stats, compare stats across broadcasts, analyze per-link click data |
 | `manage_forms` | 3 | List forms, list subscribers, add subscriber |

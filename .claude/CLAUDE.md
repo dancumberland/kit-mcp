@@ -121,7 +121,28 @@ npm run lint:fix     # biome check --fix
 
 # Type check
 npm run typecheck    # tsc --noEmit
+
+# Publish
+npm publish --access public   # requires token in ~/.npmrc
 ```
+
+### npm Publish Setup
+
+Dan uses WebAuthn (Dashlane biometrics) for npm 2FA — `npm publish` can't prompt for it. The workaround is a **granular access token** with "Bypass 2FA" checked, stored in `~/.npmrc`.
+
+**Current token:** `kit-mcp-ci` (expires Jun 15, 2026, 90-day, read/write all packages)
+
+**When the token expires**, create a new one:
+1. Go to https://www.npmjs.com/settings/dancumberland/tokens/granular-access-tokens/new
+2. Name: `kit-mcp-ci` (or similar)
+3. Check **Bypass two-factor authentication (2FA)**
+4. Packages permissions: **Read and write**
+5. Select packages: **All packages**
+6. Expiration: **90 days** (maximum)
+7. Click **Generate token** — Dashlane will prompt for biometrics
+8. Copy the token and run: `npm config set //registry.npmjs.org/:_authToken <token>`
+
+The token lives in `~/.npmrc` (global, not project). `.npmrc` is in `.gitignore`.
 
 ---
 

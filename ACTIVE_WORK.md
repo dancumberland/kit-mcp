@@ -1,28 +1,25 @@
 # Active Work
 
-Last updated: 2026-03-16
+Last updated: 2026-03-17
 
 ## In Progress
 
-Working on: Make GitHub repo public + update README to differentiate from competitors
-Key files: README.md, GitHub repo settings
+Nothing active.
 
 ## Completed Today
 
-- Added `compare_stats` action to manage_subscribers (batch engagement ranking, up to 100 subscribers)
-- Added `formatSubscriberComparison` formatter (ranked by open rate)
-- Rewrote tool descriptions with prescriptive engagement workflow
-- Bumped version to 1.3.1
-- 8 new tests (179 total passing)
+- Implemented `top_engaged` action — one-call engagement ranking (filter + stats + sort)
+- Extracted `fetchBatchedStats` shared helper
+- Published v1.4.0 to npm
 
 ## Context
 
-- v1.3.1 ready to commit and push
-- Pre-existing v1.2.0 changes (broadcast list_stats, get_clicks, engagement_filter) included
-- Real-world testing showed Claude fails to find engagement data without explicit workflow guidance in descriptions
+- v1.4.0 includes: `top_engaged` action, simplified tool description, 10 subscriber actions
+- GitHub repo is public
+- npm token "kit-mcp-publish-v3" expires Mar 24, 2026
 
 ## Next Up
 
-- Test engagement ranking workflow in fresh claude.ai chat
-- npm publish v1.3.1
-- Consider dedicated `top_engaged` action if description changes don't solve the workflow problem
+- Test `top_engaged` in fresh Claude.ai chat
+- Clean up old npm tokens (kit-mcp-publish, kit-mcp-publish-v2)
+- Commit v1.4.0 changes to git
